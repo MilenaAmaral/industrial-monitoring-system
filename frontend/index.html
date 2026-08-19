@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Industrial Monitor</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="background-glow glow-one"></div>
+    <div class="background-glow glow-two"></div>
+
+    <main class="dashboard">
+
+        <!-- HEADER -->
+        <header class="header">
+
+            <div class="brand">
+                <div class="brand-icon">
+                    <span></span>
+                </div>
+
+                <div>
+                    <h1>INDUSTRIAL MONITOR</h1>
+                    <p>SIEMENS S7-1500 • MACHINE CONTROL SYSTEM</p>
+                </div>
+            </div>
+
+            <div class="connection">
+                <span class="connection-dot"></span>
+
+                <div>
+                    <small>PLC STATUS</small>
+                    <strong id="plc-status">ONLINE</strong>
+                </div>
+            </div>
+
+        </header>
+
+
+        <!-- PRINCIPAIS INDICADORES -->
+        <section class="metrics">
+
+            <article class="metric-card">
+
+                <div class="metric-header">
+                    <span>VELOCIDADE</span>
+                    <span class="metric-icon">↗</span>
+                </div>
+
+                <div class="metric-value">
+                    <strong id="velocidade">0</strong>
+                    <span>RPM</span>
+                </div>
+
+                <div class="metric-line"></div>
+
+                <small>REAL TIME</small>
+
+            </article>
+
+
+            <article class="metric-card">
+
+                <div class="metric-header">
+                    <span>PRODUÇÃO</span>
+                    <span class="metric-icon">◈</span>
+                </div>
+
+                <div class="metric-value">
+                    <strong id="producao">0</strong>
+                    <span>UNITS</span>
+                </div>
+
+                <div class="metric-line"></div>
+
+                <small>TOTAL PRODUCED</small>
+
+            </article>
+
+
+            <article class="metric-card">
+
+                <div class="metric-header">
+                    <span>CONTADOR</span>
+                    <span class="metric-icon">◉</span>
+                </div>
+
+                <div class="metric-value">
+                    <strong id="contador">0</strong>
+                    <span>CYCLES</span>
+                </div>
+
+                <div class="metric-line"></div>
+
+                <small>MACHINE CYCLES</small>
+
+            </article>
+
+        </section>
+
+
+        <!-- STATUS -->
+        <section class="status-grid">
+
+            <article class="status-card machine-status">
+
+                <div class="status-title">
+                    <span>MACHINE STATUS</span>
+                    <span class="live-indicator">LIVE</span>
+                </div>
+
+                <div class="machine-content">
+
+                    <div class="status-circle">
+                        <div class="status-pulse"></div>
+                        <span>●</span>
+                    </div>
+
+                    <div>
+                        <small>CURRENT STATE</small>
+                        <h2 id="estado">PRODUZINDO</h2>
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <article class="status-card">
+
+                <div class="status-title">
+                    <span>MOTOR</span>
+                    <span>DRIVE</span>
+                </div>
+
+                <div class="simple-status">
+
+                    <span class="status-dot" id="motor-dot"></span>
+
+                    <div>
+                        <small>MOTOR STATE</small>
+                        <h2 id="motor">LIGADO</h2>
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <article class="status-card">
+
+                <div class="status-title">
+                    <span>ALARM</span>
+                    <span>SAFETY</span>
+                </div>
+
+                <div class="simple-status">
+
+                    <span class="status-dot alarm-dot" id="falha-dot"></span>
+
+                    <div>
+                        <small>SYSTEM FAULT</small>
+                        <h2 id="falha">NO FAULT</h2>
+                    </div>
+
+                </div>
+
+            </article>
+
+        </section>
+
+
+        <!-- SISTEMA -->
+        <section class="system-panel">
+
+            <div class="system-title">
+                <div>
+                    <span>SYSTEM MONITORING</span>
+                    <small>REAL-TIME COMMUNICATION</small>
+                </div>
+
+                <div class="pulse-bars">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+
+            <div class="system-info">
+
+                <div>
+                    <small>PLC</small>
+                    <strong>SIEMENS S7-1500</strong>
+                </div>
+
+                <div>
+                    <small>CONNECTION</small>
+                    <strong class="connected">● CONNECTED</strong>
+                </div>
+
+                <div>
+                    <small>LAST UPDATE</small>
+                    <strong id="last-update">--:--:--</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <footer>
+            <span>INDUSTRIAL MONITOR v1.0</span>
+            <span>PLC COMMUNICATION SYSTEM</span>
+        </footer>
+
+    </main>
+
+    <script src="js/main.js"></script>
+
+</body>
+</html>
