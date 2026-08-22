@@ -6,6 +6,8 @@
 
     <title>Industrial Monitor</title>
 
+    <link rel="icon" type="image/png" href="http://127.0.0.1:8000/img/favicon.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -37,13 +39,21 @@
                 </div>
             </div>
 
-            <div class="connection">
-                <span class="connection-dot"></span>
+            <div class="header-actions">
 
-                <div>
-                    <small>PLC STATUS</small>
-                    <strong id="plc-status">ONLINE</strong>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Alternar tema claro/escuro">
+                    <span id="theme-icon">🌙</span>
+                </button>
+
+                <div class="connection">
+                    <span class="connection-dot"></span>
+
+                    <div>
+                        <small>PLC STATUS</small>
+                        <strong id="plc-status">ONLINE</strong>
+                    </div>
                 </div>
+
             </div>
 
         </header>
@@ -55,13 +65,13 @@
             <article class="metric-card">
 
                 <div class="metric-header">
-                    <span>VELOCIDADE</span>
+                    <span>CAIXAS POR PALETE</span>
                     <span class="metric-icon">↗</span>
                 </div>
 
                 <div class="metric-value">
-                    <strong id="velocidade">0</strong>
-                    <span>RPM</span>
+                    <strong id="caixas">0</strong>
+                    <span>CX</span>
                 </div>
 
                 <div class="metric-line"></div>
@@ -74,12 +84,12 @@
             <article class="metric-card">
 
                 <div class="metric-header">
-                    <span>PRODUÇÃO</span>
+                    <span>PALETES PRONTOS</span>
                     <span class="metric-icon">◈</span>
                 </div>
 
                 <div class="metric-value">
-                    <strong id="producao">0</strong>
+                    <strong id="paletes">0</strong>
                     <span>UNITS</span>
                 </div>
 
@@ -93,13 +103,13 @@
             <article class="metric-card">
 
                 <div class="metric-header">
-                    <span>CONTADOR</span>
+                    <span>TEMPO RODANDO</span>
                     <span class="metric-icon">◉</span>
                 </div>
 
                 <div class="metric-value">
-                    <strong id="contador">0</strong>
-                    <span>CYCLES</span>
+                    <strong id="tempo-rodando">00:00:00</strong>
+                    <span>H:M:S</span>
                 </div>
 
                 <div class="metric-line"></div>
@@ -141,8 +151,8 @@
             <article class="status-card">
 
                 <div class="status-title">
-                    <span>MOTOR</span>
-                    <span>DRIVE</span>
+                    <span>TEMPO PARADO</span>
+                    <span>STOPPED</span>
                 </div>
 
                 <div class="simple-status">
@@ -150,8 +160,8 @@
                     <span class="status-dot" id="motor-dot"></span>
 
                     <div>
-                        <small>MOTOR STATE</small>
-                        <h2 id="motor">LIGADO</h2>
+                        <small>STOPPED TIME</small>
+                        <h2 id="motor">0 SEG</h2>
                     </div>
 
                 </div>
@@ -162,8 +172,8 @@
             <article class="status-card">
 
                 <div class="status-title">
-                    <span>ALARM</span>
-                    <span>SAFETY</span>
+                    <span>EFICIÊNCIA</span>
+                    <span>PERFORMANCE</span>
                 </div>
 
                 <div class="simple-status">
@@ -171,8 +181,8 @@
                     <span class="status-dot alarm-dot" id="falha-dot"></span>
 
                     <div>
-                        <small>SYSTEM FAULT</small>
-                        <h2 id="falha">NO FAULT</h2>
+                        <small>RUNNING RATIO</small>
+                        <h2 id="falha">0%</h2>
                     </div>
 
                 </div>

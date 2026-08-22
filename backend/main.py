@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from plc_connection import conectar_plc
 from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
@@ -6,11 +10,27 @@ from mysql_connection import conectar_mysql
 from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 from automacao import iniciar_leitura_automatica
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI(
     title="Industrial Monitoring System",
     description="API para monitoramento de CLP Siemens",
     version="1.0.0"
+)
+
+app.mount(
+    "/img",
+    StaticFiles(directory=BASE_DIR / "img"),
+    name="img"
+)
+
+# CORS liberado para desenvolvimento local (o frontend roda em outra origem/porta).
+# Em producao, troque allow_origins=["*"] pelo dominio real do frontend.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
