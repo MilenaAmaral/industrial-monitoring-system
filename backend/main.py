@@ -4,11 +4,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from plc_connection import conectar_plc
-from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
-from mysql_connection import conectar_mysql
-from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
-from automacao import iniciar_leitura_automatica
+from backend.plc_connection import conectar_plc
+from backend.plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
+from backend.mysql_connection import conectar_mysql
+from backend.salvar_leitura_mysql import montar_valores, salvar_leitura_producao
+from backend.automacao import iniciar_leitura_automatica
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 

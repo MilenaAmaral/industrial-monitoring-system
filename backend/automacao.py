@@ -10,10 +10,10 @@ import time
 
 from dotenv import load_dotenv
 
-from plc_connection import conectar_plc
-from mysql_connection import conectar_mysql
-from plc_reader import VARIAVEIS_PRODUCAO
-from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
+from backend.plc_connection import conectar_plc
+from backend.mysql_connection import conectar_mysql
+from backend.plc_reader import VARIAVEIS_PRODUCAO
+from backend.salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 
 load_dotenv()
 
