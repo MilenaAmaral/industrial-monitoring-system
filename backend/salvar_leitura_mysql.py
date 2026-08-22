@@ -1,17 +1,27 @@
+"""
+Le as variaveis de producao (DB5) no CLP e salva uma leitura (snapshot)
+na tabela leituras_producao do MySQL.
+
+Pre-requisitos:
+- Tabela leituras_producao ja criada no banco siemens_plc_monitor.
+- Comunicacao com o CLP ja validada.
+
+Este script NAO altera main.py nem plc_connection.py.
+"""
+
 from plc_connection import conectar_plc
 from mysql_connection import conectar_mysql
-from teste_comunicacao_plc import VARIAVEIS, ler_variavel
+from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
 
 
-def montar_valores(plc):
+def montar_valores(plc, variaveis):
     """
-    Le cada variavel definida em VARIAVEIS (teste_comunicacao_plc.py) e
-    organiza os valores convertidos num dicionario simples, por nome.
-    Retorna None se alguma leitura falhar.
+    Le cada variavel da lista e organiza os valores convertidos num
+    dicionario simples, por nome. Retorna None se alguma leitura falhar.
     """
     valores = {}
 
-    for var in VARIAVEIS:
+    for var in variaveis:
         leitura = ler_variavel(plc, var)
 
         if not leitura["sucesso"]:
@@ -23,31 +33,32 @@ def montar_valores(plc):
     return valores
 
 
-def salvar_leitura(conexao, valores):
+def salvar_leitura_producao(conexao, valores):
     """
-    Insere uma linha na tabela leituras_plc com os valores lidos.
-    Espera as chaves: MEMORIA BOOL, MEMORIA INT, MEMORIA FLOAT, MEMORIA STRING
-    (nomes definidos em VARIAVEIS, em teste_comunicacao_plc.py).
+    Insere uma linha na tabela leituras_producao com os valores lidos.
+    Espera as chaves: ContagemPaletesProntos, ContagemCaixasPalete,
+    TempoParado, TempoRodando (nomes definidos em VARIAVEIS_PRODUCAO,
+    em plc_reader.py).
     """
     cursor = conexao.cursor()
 
     sql = """
-        INSERT INTO leituras_plc
-            (memoria_bool, memoria_int, memoria_float, memoria_string)
+        INSERT INTO leituras_producao
+            (contagem_paletes_prontos, contagem_caixas_palete, tempo_parado, tempo_rodando)
         VALUES (%s, %s, %s, %s)
     """
 
     dados = (
-        valores.get("MEMORIA BOOL"),
-        valores.get("MEMORIA INT"),
-        round(valores.get("MEMORIA FLOAT", 0)) if valores.get("MEMORIA FLOAT") is not None else None,
-        valores.get("MEMORIA STRING"),
+        valores.get("ContagemPaletesProntos"),
+        valores.get("ContagemCaixasPalete"),
+        valores.get("TempoParado"),
+        valores.get("TempoRodando"),
     )
 
     cursor.execute(sql, dados)
     conexao.commit()
 
-    print(f"✓ Leitura salva no banco (id {cursor.lastrowid}).")
+    print(f"✓ Leitura de produção salva no banco (id {cursor.lastrowid}).")
     cursor.close()
 
 
@@ -57,7 +68,7 @@ def main():
         print("Nao foi possivel conectar ao CLP. Abortando.")
         return
 
-    valores = montar_valores(plc)
+    valores = montar_valores(plc, VARIAVEIS_PRODUCAO)
     plc.disconnect()
 
     if valores is None:
@@ -71,7 +82,7 @@ def main():
         print("Nao foi possivel conectar ao MySQL. Nada foi salvo.")
         return
 
-    salvar_leitura(conexao, valores)
+    salvar_leitura_producao(conexao, valores)
     conexao.close()
 
 

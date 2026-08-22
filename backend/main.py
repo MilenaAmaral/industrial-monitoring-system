@@ -1,5 +1,10 @@
 from fastapi import FastAPI
+
 from plc_connection import conectar_plc
+from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
+from mysql_connection import conectar_mysql
+from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
+from automacao import iniciar_leitura_automatica
 
 
 app = FastAPI(
@@ -7,6 +12,12 @@ app = FastAPI(
     description="API para monitoramento de CLP Siemens",
     version="1.0.0"
 )
+
+
+@app.on_event("startup")
+def iniciar_automacao():
+    """Dispara a leitura automatica periodica (background) ao subir a API."""
+    iniciar_leitura_automatica()
 
 
 @app.get("/")
@@ -32,4 +43,74 @@ def plc_status():
     return {
         "conectado": False,
         "mensagem": "Nao foi possivel conectar ao CLP."
+    }
+
+
+@app.get("/plc/producao")
+def plc_producao():
+    """Le em tempo real as variaveis de producao (DB5) do CLP."""
+    plc = conectar_plc()
+
+    if not plc:
+        return {
+            "conectado": False,
+            "mensagem": "Nao foi possivel conectar ao CLP.",
+            "dados": None
+        }
+
+    dados = {}
+    erros = {}
+
+    for var in VARIAVEIS_PRODUCAO:
+        leitura = ler_variavel(plc, var)
+
+        if leitura["sucesso"]:
+            dados[var["nome"]] = leitura["valor_convertido"]
+        else:
+            erros[var["nome"]] = leitura["categoria_erro"]
+
+    plc.disconnect()
+
+    return {
+        "conectado": True,
+        "dados": dados,
+        "erros": erros if erros else None
+    }
+
+
+@app.post("/plc/salvar")
+def plc_salvar():
+    """Le as variaveis de producao do CLP e salva uma leitura no MySQL."""
+    plc = conectar_plc()
+
+    if not plc:
+        return {
+            "sucesso": False,
+            "mensagem": "Nao foi possivel conectar ao CLP."
+        }
+
+    valores = montar_valores(plc, VARIAVEIS_PRODUCAO)
+    plc.disconnect()
+
+    if valores is None:
+        return {
+            "sucesso": False,
+            "mensagem": "Falha ao ler uma ou mais variaveis do CLP. Nada foi salvo."
+        }
+
+    conexao = conectar_mysql()
+
+    if not conexao:
+        return {
+            "sucesso": False,
+            "mensagem": "Nao foi possivel conectar ao MySQL."
+        }
+
+    salvar_leitura_producao(conexao, valores)
+    conexao.close()
+
+    return {
+        "sucesso": True,
+        "mensagem": "Leitura salva com sucesso.",
+        "dados": valores
     }
