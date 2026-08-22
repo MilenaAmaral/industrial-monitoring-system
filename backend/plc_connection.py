@@ -1,9 +1,14 @@
+import os
+
 import snap7
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-PLC_IP = "192.168.0.121"
-RACK = 0
-SLOT = 1
+PLC_IP = os.getenv("PLC_IP", "192.168.0.121")
+RACK = int(os.getenv("PLC_RACK", "0"))
+SLOT = int(os.getenv("PLC_SLOT", "1"))
 
 
 def conectar_plc():

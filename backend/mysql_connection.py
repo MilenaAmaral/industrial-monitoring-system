@@ -1,13 +1,17 @@
+import os
+
 import mysql.connector
 from mysql.connector import Error
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-# --- Ajuste conforme o seu ambiente ---
-DB_HOST = "127.0.0.1"
-DB_PORT = 3306
-DB_USER = "root"
-DB_PASSWORD = ""  # padrao do XAMPP: sem senha
-DB_NAME = "siemens_plc_monitor"
+DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+DB_NAME = os.getenv("DB_NAME", "siemens_plc_monitor")
 
 
 def conectar_mysql():
