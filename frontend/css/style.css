@@ -689,12 +689,18 @@ body.light-theme .stops-panel {
     text-align: right;
 }
 
+.stops-stats {
+    display: flex;
+
+    gap: 22px;
+}
+
 .stops-count strong {
     display: block;
 
     font-family: "Orbitron", sans-serif;
 
-    font-size: 22px;
+    font-size: 16px;
 
     color: var(--red);
 }

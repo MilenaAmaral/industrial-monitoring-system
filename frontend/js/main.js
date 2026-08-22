@@ -31,53 +31,19 @@ aplicarTema(localStorage.getItem("industrial-monitor-tema") || "dark");
 // ===============================
 
 const API_URL = "http://127.0.0.1:8000";
-const INTERVALO_FETCH_MS = 5000;   // busca dados novos do CLP a cada 5s
-const INTERVALO_TICK_MS = 1000;    // atualiza o relógio na tela a cada 1s
-
-const CHAVE_PARADAS = "industrial-monitor-paradas";
-const MAX_PARADAS_EXIBIDAS = 20;
+const INTERVALO_FETCH_MS = 5000;   // busca dados novos da API a cada 5s
+const INTERVALO_TICK_MS = 1000;    // atualiza o relogio na tela a cada 1s
 
 
 // ===============================
-// ESTADO INTERNO (memória local do dashboard)
+// ESTADO LOCAL (só para animar o relógio entre uma busca e outra -
+// toda a logica de negocio/deteccao de parada vive no backend agora)
 // ===============================
 
-// Ultimo valor bruto recebido do CLP (para detectar se avançou ou nao)
-let ultimoTempoRodandoRaw = null;
-let ultimoTempoParadoRaw = null;
-
-// Base para o "relogio" contar sozinho entre uma busca e outra
 let baseTempoRodando = 0;
 let baseTempoParado = 0;
 let baseTimestamp = Date.now();
-
-// Estado atual da maquina: "rodando" | "parada" | null (ainda nao sabemos)
-let estadoAtual = null;
-
-// Controle do evento de parada em andamento
-let paradaEmAndamento = null; // { inicioTempoParado, inicioHorario }
-
-// Historico de paradas (persistido no navegador)
-let historicoParadas = carregarParadas();
-
-
-// ===============================
-// PERSISTÊNCIA DO HISTÓRICO DE PARADAS
-// ===============================
-
-function carregarParadas() {
-    try {
-        const salvo = localStorage.getItem(CHAVE_PARADAS);
-        return salvo ? JSON.parse(salvo) : [];
-    } catch (erro) {
-        console.error("Erro ao carregar histórico de paradas:", erro);
-        return [];
-    }
-}
-
-function salvarParadas() {
-    localStorage.setItem(CHAVE_PARADAS, JSON.stringify(historicoParadas));
-}
+let estadoAtual = null; // "rodando" | "parada" | null
 
 
 // ===============================
@@ -96,89 +62,103 @@ function formatarTempo(totalSegundos) {
     return `${pad(horas)}:${pad(minutos)}:${pad(segundos)}`;
 }
 
+function formatarDataHora(isoString) {
+    if (!isoString) return "--";
+    const data = new Date(isoString);
+    return data.toLocaleString("pt-BR");
+}
+
 
 // ===============================
-// BUSCAR DADOS DA API (a cada 5s)
+// BUSCAR STATUS ATUAL DA PRODUÇÃO
 // ===============================
 
-async function buscarDados() {
+async function buscarStatus() {
     try {
-        const resposta = await fetch(`${API_URL}/plc/producao`);
-        const json = await resposta.json();
+        const resposta = await fetch(`${API_URL}/producao/status`);
+        const dados = await resposta.json();
 
-        if (!json.conectado || !json.dados) {
+        if (!dados.conectado) {
             marcarOffline();
             return;
         }
 
-        const paletes = json.dados["ContagemPaletesProntos"] ?? 0;
-        const caixas = json.dados["ContagemCaixasPalete"] ?? 0;
-        const tempoParado = json.dados["TempoParado"] ?? 0;
-        const tempoRodando = json.dados["TempoRodando"] ?? 0;
-
-        document.getElementById("caixas").textContent = caixas.toLocaleString("pt-BR");
-        document.getElementById("paletes").textContent = paletes.toLocaleString("pt-BR");
         document.getElementById("plc-status").textContent = "ONLINE";
+        document.getElementById("caixas").textContent =
+            dados.caixas_por_palete.toLocaleString("pt-BR");
+        document.getElementById("paletes").textContent =
+            dados.paletes_prontos.toLocaleString("pt-BR");
 
-        // Detecta o estado comparando com a ultima leitura bruta do CLP
-        if (ultimoTempoRodandoRaw !== null) {
-            const rodou = tempoRodando > ultimoTempoRodandoRaw;
-            processarMudancaDeEstado(rodou ? "rodando" : "parada", tempoParado);
-        }
+        document.getElementById("contador-paradas").textContent = dados.quantidade_paradas;
 
-        ultimoTempoRodandoRaw = tempoRodando;
-        ultimoTempoParadoRaw = tempoParado;
+        estadoAtual = dados.estado;
 
-        // Resincroniza a base do "relogio continuo" com o valor real do CLP
-        baseTempoRodando = tempoRodando;
-        baseTempoParado = tempoParado;
+        baseTempoRodando = dados.tempo_rodando_segundos;
+        baseTempoParado = dados.parada_atual
+            ? dados.parada_atual.duracao_segundos
+            : 0;
         baseTimestamp = Date.now();
 
-        atualizarEficiencia();
+        atualizarEstadoNaTela();
 
     } catch (erro) {
-        console.error("Erro ao buscar dados da API:", erro);
+        console.error("Erro ao buscar status da produção:", erro);
         marcarOffline();
     }
 }
 
 
 // ===============================
-// TRATAR TRANSIÇÃO DE ESTADO (rodando <-> parada)
+// BUSCAR HISTÓRICO E RESUMO DE PARADAS
 // ===============================
 
-function processarMudancaDeEstado(novoEstado, tempoParadoAtual) {
-    if (estadoAtual === novoEstado) {
-        return; // nada mudou
+async function buscarHistoricoParadas() {
+    try {
+        const [respPar, respResumo] = await Promise.all([
+            fetch(`${API_URL}/producao/paradas?limite=20`),
+            fetch(`${API_URL}/producao/paradas/resumo`),
+        ]);
+
+        const { paradas } = await respPar.json();
+        const resumo = await respResumo.json();
+
+        renderizarHistoricoParadas(paradas, resumo);
+
+    } catch (erro) {
+        console.error("Erro ao buscar histórico de paradas:", erro);
+    }
+}
+
+function renderizarHistoricoParadas(paradas, resumo) {
+    document.getElementById("maior-parada").textContent =
+        formatarTempo(resumo.maior_parada_segundos || 0);
+
+    document.getElementById("media-parada").textContent =
+        formatarTempo(resumo.media_segundos || 0);
+
+    const lista = document.getElementById("stops-list");
+
+    if (!paradas || paradas.length === 0) {
+        lista.innerHTML = '<li class="stops-empty">Nenhuma parada registrada ainda.</li>';
+        return;
     }
 
-    // Rodando -> Parada: comeca uma nova parada
-    if (novoEstado === "parada") {
-        paradaEmAndamento = {
-            inicioTempoParado: tempoParadoAtual,
-            inicioHorario: new Date(),
-        };
-    }
+    lista.innerHTML = paradas
+        .map((parada) => {
+            const duracao = parada.duracao_segundos !== null
+                ? formatarTempo(parada.duracao_segundos)
+                : "EM ANDAMENTO";
 
-    // Parada -> Rodando: fecha a parada e registra no historico
-    if (novoEstado === "rodando" && paradaEmAndamento) {
-        const duracao = tempoParadoAtual - paradaEmAndamento.inicioTempoParado;
-
-        if (duracao > 0) {
-            historicoParadas.unshift({
-                horario: paradaEmAndamento.inicioHorario.toLocaleString("pt-BR"),
-                duracaoSegundos: duracao,
-            });
-
-            salvarParadas();
-            renderizarHistoricoParadas();
-        }
-
-        paradaEmAndamento = null;
-    }
-
-    estadoAtual = novoEstado;
-    atualizarEstadoNaTela();
+            return `
+                <li>
+                    <span class="stop-time">
+                        ${formatarDataHora(parada.inicio)} → ${formatarDataHora(parada.fim)}
+                    </span>
+                    <span class="stop-duration">${duracao}</span>
+                </li>
+            `;
+        })
+        .join("");
 }
 
 
@@ -212,6 +192,7 @@ function tick() {
 function atualizarEstadoNaTela() {
     const estadoEl = document.getElementById("estado");
     const motorDot = document.getElementById("motor-dot");
+    const motorTexto = document.getElementById("motor");
 
     if (estadoAtual === "rodando") {
         estadoEl.textContent = "PRODUZINDO";
@@ -219,7 +200,7 @@ function atualizarEstadoNaTela() {
 
         motorDot.style.background = "var(--green)";
         motorDot.style.boxShadow = "0 0 12px var(--green)";
-        document.getElementById("motor").style.color = "var(--green)";
+        motorTexto.style.color = "var(--green)";
 
     } else if (estadoAtual === "parada") {
         estadoEl.textContent = "PARADA";
@@ -227,14 +208,16 @@ function atualizarEstadoNaTela() {
 
         motorDot.style.background = "var(--red)";
         motorDot.style.boxShadow = "0 0 12px var(--red)";
-        document.getElementById("motor").style.color = "var(--red)";
+        motorTexto.style.color = "var(--red)";
     }
+
+    atualizarEficiencia();
 }
 
 function atualizarEficiencia() {
-    const tempoTotal = baseTempoRodando + baseTempoParado;
-    const eficiencia = tempoTotal > 0
-        ? Math.round((baseTempoRodando / tempoTotal) * 100)
+    const tempoTotal = baseTempoRodando + (estadoAtual === "parada" ? baseTempoParado : 0);
+    const eficiencia = baseTempoRodando + baseTempoParado > 0
+        ? Math.round((baseTempoRodando / (baseTempoRodando + baseTempoParado)) * 100)
         : 0;
 
     const falha = document.getElementById("falha");
@@ -272,37 +255,12 @@ function marcarOffline() {
 
 
 // ===============================
-// RENDERIZAR HISTÓRICO DE PARADAS
-// ===============================
-
-function renderizarHistoricoParadas() {
-    document.getElementById("contador-paradas").textContent = historicoParadas.length;
-
-    const lista = document.getElementById("stops-list");
-
-    if (historicoParadas.length === 0) {
-        lista.innerHTML = '<li class="stops-empty">Nenhuma parada registrada ainda.</li>';
-        return;
-    }
-
-    lista.innerHTML = historicoParadas
-        .slice(0, MAX_PARADAS_EXIBIDAS)
-        .map((parada) => `
-            <li>
-                <span class="stop-time">${parada.horario}</span>
-                <span class="stop-duration">${formatarTempo(parada.duracaoSegundos)}</span>
-            </li>
-        `)
-        .join("");
-}
-
-
-// ===============================
 // INICIALIZAÇÃO
 // ===============================
 
-renderizarHistoricoParadas();
+buscarStatus();
+buscarHistoricoParadas();
 
-buscarDados();
-setInterval(buscarDados, INTERVALO_FETCH_MS);
+setInterval(buscarStatus, INTERVALO_FETCH_MS);
+setInterval(buscarHistoricoParadas, INTERVALO_FETCH_MS);
 setInterval(tick, INTERVALO_TICK_MS);

@@ -9,9 +9,9 @@ Pre-requisitos:
 Este script NAO altera main.py nem plc_connection.py.
 """
 
-from backend.plc_connection import conectar_plc
-from backend.mysql_connection import conectar_mysql
-from backend.plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
+from plc_connection import conectar_plc
+from mysql_connection import conectar_mysql
+from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
 
 
 def montar_valores(plc, variaveis):

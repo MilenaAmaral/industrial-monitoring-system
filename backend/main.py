@@ -1,27 +1,18 @@
-from pathlib import Path
-
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.plc_connection import conectar_plc
-from backend.plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
-from backend.mysql_connection import conectar_mysql
-from backend.salvar_leitura_mysql import montar_valores, salvar_leitura_producao
-from backend.automacao import iniciar_leitura_automatica
+from plc_connection import conectar_plc
+from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
+from mysql_connection import conectar_mysql
+from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
+from automacao import iniciar_leitura_automatica
+from paradas import evento_em_andamento, listar_paradas, resumo_paradas
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 app = FastAPI(
     title="Industrial Monitoring System",
     description="API para monitoramento de CLP Siemens",
     version="1.0.0"
-)
-
-app.mount(
-    "/img",
-    StaticFiles(directory=BASE_DIR / "img"),
-    name="img"
 )
 
 # CORS liberado para desenvolvimento local (o frontend roda em outra origem/porta).
@@ -133,4 +124,77 @@ def plc_salvar():
         "sucesso": True,
         "mensagem": "Leitura salva com sucesso.",
         "dados": valores
+    }
+
+
+@app.get("/producao/status")
+def producao_status():
+    """
+    Estado atual da maquina (rodando/parada) e os cronometros atuais,
+    lidos ao vivo do CLP. Os tempos vem direto do acumulador do proprio
+    CLP - nunca zeram sozinhos, mesmo que a API reinicie.
+    """
+    plc = conectar_plc()
+
+    if not plc:
+        return {
+            "conectado": False,
+            "mensagem": "Nao foi possivel conectar ao CLP."
+        }
+
+    valores = montar_valores(plc, VARIAVEIS_PRODUCAO)
+    plc.disconnect()
+
+    if valores is None:
+        return {
+            "conectado": False,
+            "mensagem": "Falha ao ler variaveis do CLP."
+        }
+
+    tempo_rodando = valores.get("TempoRodando", 0)
+    tempo_parado = valores.get("TempoParado", 0)
+
+    parada_atual = evento_em_andamento()
+
+    if parada_atual:
+        estado = "parada"
+        duracao_parada_atual = tempo_parado - parada_atual["tempo_parado_inicio"]
+        info_parada_atual = {
+            "inicio": parada_atual["inicio"],
+            "duracao_segundos": duracao_parada_atual,
+        }
+    else:
+        estado = "rodando"
+        info_parada_atual = None
+
+    resumo = resumo_paradas() or {}
+
+    return {
+        "conectado": True,
+        "estado": estado,
+        "tempo_rodando_segundos": tempo_rodando,
+        "tempo_parado_segundos": tempo_parado,
+        "paletes_prontos": valores.get("ContagemPaletesProntos", 0),
+        "caixas_por_palete": valores.get("ContagemCaixasPalete", 0),
+        "parada_atual": info_parada_atual,
+        "quantidade_paradas": resumo.get("quantidade", 0),
+    }
+
+
+@app.get("/producao/paradas")
+def producao_paradas(limite: int = 50):
+    """Lista as paradas mais recentes (mais nova primeiro)."""
+    return {"paradas": listar_paradas(limite)}
+
+
+@app.get("/producao/paradas/resumo")
+def producao_paradas_resumo():
+    """Estatisticas agregadas: quantidade, tempo total, maior parada e media."""
+    resumo = resumo_paradas()
+
+    return resumo or {
+        "quantidade": 0,
+        "tempo_total_segundos": 0,
+        "maior_parada_segundos": 0,
+        "media_segundos": 0,
     }
