@@ -30,7 +30,11 @@ aplicarTema(localStorage.getItem("industrial-monitor-tema") || "dark");
 // CONFIGURAÇÃO
 // ===============================
 
-const API_URL = "http://127.0.0.1:8000";
+// Descobre automaticamente o IP/host usado para acessar a página
+// (ex: 192.168.0.15) e usa o mesmo endereço para falar com a API,
+// que roda na porta 8000 no mesmo computador do backend/CLP.
+// Assim, qualquer dispositivo na rede funciona sem editar nada aqui.
+const API_URL = `http://${window.location.hostname}:8000`;
 const INTERVALO_FETCH_MS = 5000;   // busca dados novos da API a cada 5s
 const INTERVALO_TICK_MS = 1000;    // atualiza o relogio na tela a cada 1s
 
