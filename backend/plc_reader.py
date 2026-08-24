@@ -69,6 +69,37 @@ VARIAVEIS_PRODUCAO = [
     },
 ]
 
+# Alarmes do sistema - DB8 "AlarmesDB"
+# Array[0..32] of Bool, empacotado por bit dentro dos bytes
+# (Optimized block access deve estar desabilitado nessa DB tambem).
+# Conforme mais alarmes forem nomeados pelo programador do CLP,
+# basta adicionar novas entradas aqui (offset/bit seguem a posicao
+# do elemento no array: elemento 8 = offset 1 bit 0, elemento 9 =
+# offset 1 bit 1, e assim por diante).
+VARIAVEIS_ALARMES = [
+    {
+        "nome": "SistemaDesligado",
+        "db": 8,
+        "offset": 0,
+        "bit": 0,
+        "tipo": "BOOL"
+    },
+    {
+        "nome": "EmergenciaAcionada",
+        "db": 8,
+        "offset": 0,
+        "bit": 1,
+        "tipo": "BOOL"
+    },
+    {
+        "nome": "SistemaEmManual",
+        "db": 8,
+        "offset": 0,
+        "bit": 2,
+        "tipo": "BOOL"
+    },
+]
+
 
 # Tamanho em bytes que cada tipo ocupa na leitura.
 # STRING é tratado separadamente.
