@@ -23,8 +23,6 @@ function alternarTema() {
 }
 
 themeToggle.addEventListener("click", alternarTema);
-
-// Aplica o tema salvo (ou escuro, por padrão, na primeira visita)
 aplicarTema(localStorage.getItem("industrial-monitor-tema") || "dark");
 
 
@@ -32,42 +30,24 @@ aplicarTema(localStorage.getItem("industrial-monitor-tema") || "dark");
 // CONFIGURAÇÃO
 // ===============================
 
-const API_URL = "http://127.0.0.1:8000";
-const INTERVALO_ATUALIZACAO_MS = 5000; // 5 segundos
-
-// Guarda o valor anterior de tempo rodando, para inferir se a máquina
-// está rodando agora (o valor subiu desde a última leitura) ou parada.
-let tempoRodandoAnterior = null;
+// Descobre automaticamente o IP/host usado para acessar a página
+// (ex: 192.168.0.15) e usa o mesmo endereço para falar com a API,
+// que roda na porta 8000 no mesmo computador do backend/CLP.
+// Assim, qualquer dispositivo na rede funciona sem editar nada aqui.
+const API_URL = `http://${window.location.hostname}:8000`;
+const INTERVALO_FETCH_MS = 5000;   // busca dados novos da API a cada 5s
+const INTERVALO_TICK_MS = 1000;    // atualiza o relogio na tela a cada 1s
 
 
 // ===============================
-// BUSCAR DADOS DA API
+// ESTADO LOCAL (só para animar o relógio entre uma busca e outra -
+// toda a logica de negocio/deteccao de parada vive no backend agora)
 // ===============================
 
-async function buscarDados() {
-    try {
-        const resposta = await fetch(`${API_URL}/plc/producao`);
-        const json = await resposta.json();
-
-        if (!json.conectado || !json.dados) {
-            atualizarDashboardOffline();
-            return;
-        }
-
-        const dados = {
-            paletes: json.dados["ContagemPaletesProntos"] ?? 0,
-            caixas: json.dados["ContagemCaixasPalete"] ?? 0,
-            tempoParado: json.dados["TempoParado"] ?? 0,
-            tempoRodando: json.dados["TempoRodando"] ?? 0,
-        };
-
-        atualizarDashboard(dados);
-
-    } catch (erro) {
-        console.error("Erro ao buscar dados da API:", erro);
-        atualizarDashboardOffline();
-    }
-}
+let baseTempoRodando = 0;
+let baseTempoParado = 0;
+let baseTimestamp = Date.now();
+let estadoAtual = null; // "rodando" | "parada" | null
 
 
 // ===============================
@@ -75,64 +55,173 @@ async function buscarDados() {
 // ===============================
 
 function formatarTempo(totalSegundos) {
-    const horas = Math.floor(totalSegundos / 3600);
-    const minutos = Math.floor((totalSegundos % 3600) / 60);
-    const segundos = Math.floor(totalSegundos % 60);
+    const seg = Math.max(0, Math.floor(totalSegundos));
+
+    const horas = Math.floor(seg / 3600);
+    const minutos = Math.floor((seg % 3600) / 60);
+    const segundos = seg % 60;
 
     const pad = (n) => String(n).padStart(2, "0");
 
     return `${pad(horas)}:${pad(minutos)}:${pad(segundos)}`;
 }
 
+function formatarDataHora(isoString) {
+    if (!isoString) return "--";
+    const data = new Date(isoString);
+    return data.toLocaleString("pt-BR");
+}
+
 
 // ===============================
-// ATUALIZA DASHBOARD (dados online)
+// BUSCAR STATUS ATUAL DA PRODUÇÃO
 // ===============================
 
-function atualizarDashboard(dados) {
+async function buscarStatus() {
+    try {
+        const resposta = await fetch(`${API_URL}/producao/status`);
+        const dados = await resposta.json();
 
-    document.getElementById("caixas").textContent =
-        dados.caixas.toLocaleString("pt-BR");
+        if (!dados.conectado) {
+            marcarOffline();
+            return;
+        }
 
-    document.getElementById("paletes").textContent =
-        dados.paletes.toLocaleString("pt-BR");
+        document.getElementById("plc-status").textContent = "ONLINE";
+        document.getElementById("caixas").textContent =
+            dados.caixas_por_palete.toLocaleString("pt-BR");
+        document.getElementById("paletes").textContent =
+            dados.paletes_prontos.toLocaleString("pt-BR");
 
-    document.getElementById("tempo-rodando").textContent =
-        formatarTempo(dados.tempoRodando);
+        document.getElementById("contador-paradas").textContent = dados.quantidade_paradas;
+
+        estadoAtual = dados.estado;
+
+        baseTempoRodando = dados.tempo_rodando_segundos;
+        baseTempoParado = dados.parada_atual
+            ? dados.parada_atual.duracao_segundos
+            : 0;
+        baseTimestamp = Date.now();
+
+        atualizarEstadoNaTela();
+
+    } catch (erro) {
+        console.error("Erro ao buscar status da produção:", erro);
+        marcarOffline();
+    }
+}
 
 
-    // Máquina está "rodando" se o tempo rodando aumentou desde a última leitura.
-    const rodando =
-        tempoRodandoAnterior !== null && dados.tempoRodando > tempoRodandoAnterior;
+// ===============================
+// BUSCAR HISTÓRICO E RESUMO DE PARADAS
+// ===============================
 
-    tempoRodandoAnterior = dados.tempoRodando;
+async function buscarHistoricoParadas() {
+    try {
+        const [respPar, respResumo] = await Promise.all([
+            fetch(`${API_URL}/producao/paradas?limite=20`),
+            fetch(`${API_URL}/producao/paradas/resumo`),
+        ]);
 
-    const estado = document.getElementById("estado");
-    estado.textContent = rodando ? "PRODUZINDO" : "PARADA";
-    estado.style.color = rodando ? "var(--green)" : "var(--muted)";
+        const { paradas } = await respPar.json();
+        const resumo = await respResumo.json();
 
+        renderizarHistoricoParadas(paradas, resumo);
 
-    // Tempo parado
-    const motor = document.getElementById("motor");
-    const motorDot = document.getElementById("motor-dot");
+    } catch (erro) {
+        console.error("Erro ao buscar histórico de paradas:", erro);
+    }
+}
 
-    motor.textContent = formatarTempo(dados.tempoParado);
+function renderizarHistoricoParadas(paradas, resumo) {
+    document.getElementById("maior-parada").textContent =
+        formatarTempo(resumo.maior_parada_segundos || 0);
 
-    if (dados.tempoParado > 0) {
-        motor.style.color = "var(--red)";
-        motorDot.style.background = "var(--red)";
-        motorDot.style.boxShadow = "0 0 12px var(--red)";
-    } else {
-        motor.style.color = "var(--green)";
-        motorDot.style.background = "var(--green)";
-        motorDot.style.boxShadow = "0 0 12px var(--green)";
+    document.getElementById("media-parada").textContent =
+        formatarTempo(resumo.media_segundos || 0);
+
+    const lista = document.getElementById("stops-list");
+
+    if (!paradas || paradas.length === 0) {
+        lista.innerHTML = '<li class="stops-empty">Nenhuma parada registrada ainda.</li>';
+        return;
     }
 
+    lista.innerHTML = paradas
+        .map((parada) => {
+            const duracao = parada.duracao_segundos !== null
+                ? formatarTempo(parada.duracao_segundos)
+                : "EM ANDAMENTO";
 
-    // Eficiência = tempo rodando / (tempo rodando + tempo parado)
-    const tempoTotal = dados.tempoRodando + dados.tempoParado;
-    const eficiencia = tempoTotal > 0
-        ? Math.round((dados.tempoRodando / tempoTotal) * 100)
+            return `
+                <li>
+                    <span class="stop-time">
+                        ${formatarDataHora(parada.inicio)} → ${formatarDataHora(parada.fim)}
+                    </span>
+                    <span class="stop-duration">${duracao}</span>
+                </li>
+            `;
+        })
+        .join("");
+}
+
+
+// ===============================
+// RELÓGIO CONTÍNUO (a cada 1s, sem esperar o fetch)
+// ===============================
+
+function tick() {
+    const decorridoSegundos = (Date.now() - baseTimestamp) / 1000;
+
+    let tempoRodandoExibido = baseTempoRodando;
+    let tempoParadoExibido = baseTempoParado;
+
+    if (estadoAtual === "rodando") {
+        tempoRodandoExibido += decorridoSegundos;
+    } else if (estadoAtual === "parada") {
+        tempoParadoExibido += decorridoSegundos;
+    }
+
+    document.getElementById("tempo-rodando").textContent = formatarTempo(tempoRodandoExibido);
+    document.getElementById("motor").textContent = formatarTempo(tempoParadoExibido);
+
+    atualizarHorario();
+}
+
+
+// ===============================
+// ATUALIZAÇÕES VISUAIS AUXILIARES
+// ===============================
+
+function atualizarEstadoNaTela() {
+    const estadoEl = document.getElementById("estado");
+    const motorDot = document.getElementById("motor-dot");
+    const motorTexto = document.getElementById("motor");
+
+    if (estadoAtual === "rodando") {
+        estadoEl.textContent = "PRODUZINDO";
+        estadoEl.style.color = "var(--green)";
+
+        motorDot.style.background = "var(--green)";
+        motorDot.style.boxShadow = "0 0 12px var(--green)";
+        motorTexto.style.color = "var(--green)";
+
+    } else if (estadoAtual === "parada") {
+        estadoEl.textContent = "PARADA";
+        estadoEl.style.color = "var(--red)";
+
+        motorDot.style.background = "var(--red)";
+        motorDot.style.boxShadow = "0 0 12px var(--red)";
+        motorTexto.style.color = "var(--red)";
+    }
+
+    atualizarEficiencia();
+}
+
+function atualizarEficiencia() {
+    const tempoTotal = baseTempoRodando + (estadoAtual === "parada" ? baseTempoParado : 0);
+    const eficiencia = baseTempoRodando + baseTempoParado > 0
+        ? Math.round((baseTempoRodando / (baseTempoRodando + baseTempoParado)) * 100)
         : 0;
 
     const falha = document.getElementById("falha");
@@ -153,38 +242,19 @@ function atualizarDashboard(dados) {
         falhaDot.style.background = "var(--red)";
         falhaDot.style.boxShadow = "0 0 12px var(--red)";
     }
-
-
-    document.getElementById("plc-status").textContent = "ONLINE";
-
-    atualizarHorario();
 }
-
-
-// ===============================
-// ESTADO OFFLINE (CLP ou API fora do ar)
-// ===============================
-
-function atualizarDashboardOffline() {
-    document.getElementById("plc-status").textContent = "OFFLINE";
-
-    const estado = document.getElementById("estado");
-    estado.textContent = "SEM CONEXÃO";
-    estado.style.color = "var(--red)";
-
-    atualizarHorario();
-}
-
-
-// ===============================
-// HORÁRIO DA ÚLTIMA ATUALIZAÇÃO
-// ===============================
 
 function atualizarHorario() {
     const agora = new Date();
-    const hora = agora.toLocaleTimeString("pt-BR");
+    document.getElementById("last-update").textContent = agora.toLocaleTimeString("pt-BR");
+}
 
-    document.getElementById("last-update").textContent = hora;
+function marcarOffline() {
+    document.getElementById("plc-status").textContent = "OFFLINE";
+
+    const estadoEl = document.getElementById("estado");
+    estadoEl.textContent = "SEM CONEXÃO";
+    estadoEl.style.color = "var(--red)";
 }
 
 
@@ -192,5 +262,9 @@ function atualizarHorario() {
 // INICIALIZAÇÃO
 // ===============================
 
-buscarDados();
-setInterval(buscarDados, INTERVALO_ATUALIZACAO_MS);
+buscarStatus();
+buscarHistoricoParadas();
+
+setInterval(buscarStatus, INTERVALO_FETCH_MS);
+setInterval(buscarHistoricoParadas, INTERVALO_FETCH_MS);
+setInterval(tick, INTERVALO_TICK_MS);
