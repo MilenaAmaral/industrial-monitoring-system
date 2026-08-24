@@ -167,6 +167,68 @@ function renderizarHistoricoParadas(paradas, resumo) {
 
 
 // ===============================
+// BUSCAR ALARMES DO SISTEMA
+// ===============================
+
+// Nomes tecnicos (vindos do CLP) -> texto amigavel para exibir.
+// Conforme mais alarmes forem cadastrados no backend, basta
+// adicionar a traducao aqui.
+const NOMES_ALARMES = {
+    SistemaDesligado: "Sistema Desligado",
+    EmergenciaAcionada: "Emergência Acionada",
+    SistemaEmManual: "Sistema em Manual",
+};
+
+async function buscarAlarmes() {
+    try {
+        const resposta = await fetch(`${API_URL}/plc/alarmes`);
+        const dados = await resposta.json();
+
+        if (!dados.conectado) {
+            return;
+        }
+
+        renderizarAlarmes(dados.alarmes || {}, dados.algum_ativo);
+
+    } catch (erro) {
+        console.error("Erro ao buscar alarmes:", erro);
+    }
+}
+
+function renderizarAlarmes(alarmes, algumAtivo) {
+    const statusEl = document.getElementById("alarmes-status");
+    const lista = document.getElementById("alarmes-list");
+
+    const ativos = Object.entries(alarmes).filter(([, valor]) => valor === true);
+
+    if (algumAtivo) {
+        statusEl.textContent = "ALERTA";
+        statusEl.style.color = "var(--red)";
+    } else {
+        statusEl.textContent = "OK";
+        statusEl.style.color = "var(--green)";
+    }
+
+    if (ativos.length === 0) {
+        lista.innerHTML = '<li class="stops-empty">Nenhum alarme ativo.</li>';
+        return;
+    }
+
+    lista.innerHTML = ativos
+        .map(([nomeTecnico]) => {
+            const nomeAmigavel = NOMES_ALARMES[nomeTecnico] || nomeTecnico;
+            return `
+                <li>
+                    <span class="stop-time">${nomeAmigavel}</span>
+                    <span class="stop-duration" style="color: var(--red)">ATIVO</span>
+                </li>
+            `;
+        })
+        .join("");
+}
+
+
+// ===============================
 // RELÓGIO CONTÍNUO (a cada 1s, sem esperar o fetch)
 // ===============================
 
@@ -264,7 +326,9 @@ function marcarOffline() {
 
 buscarStatus();
 buscarHistoricoParadas();
+buscarAlarmes();
 
 setInterval(buscarStatus, INTERVALO_FETCH_MS);
 setInterval(buscarHistoricoParadas, INTERVALO_FETCH_MS);
+setInterval(buscarAlarmes, INTERVALO_FETCH_MS);
 setInterval(tick, INTERVALO_TICK_MS);

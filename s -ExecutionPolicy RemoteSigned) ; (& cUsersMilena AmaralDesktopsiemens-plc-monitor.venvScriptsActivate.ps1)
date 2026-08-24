@@ -1,0 +1,56 @@
+[1mdiff --git a/backend/main.py b/backend/main.py[m
+[1mindex 2f4e797..45abda0 100644[m
+[1m--- a/backend/main.py[m
+[1m+++ b/backend/main.py[m
+[36m@@ -2,7 +2,7 @@[m [mfrom fastapi import FastAPI[m
+ from fastapi.middleware.cors import CORSMiddleware[m
+ [m
+ from plc_connection import conectar_plc[m
+[31m-from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel[m
+[32m+[m[32mfrom plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel[m
+ from mysql_connection import conectar_mysql[m
+ from salvar_leitura_mysql import montar_valores, salvar_leitura_producao[m
+ from automacao import iniciar_leitura_automatica[m
+[36m@@ -89,6 +89,42 @@[m [mdef plc_producao():[m
+     }[m
+ [m
+ [m
+[32m+[m[32m@app.get("/plc/alarmes")[m
+[32m+[m[32mdef plc_alarmes():[m
+[32m+[m[32m    """Le em tempo real os alarmes (DB8) do CLP."""[m
+[32m+[m[32m    plc = conectar_plc()[m
+[32m+[m
+[32m+[m[32m    if not plc:[m
+[32m+[m[32m        return {[m
+[32m+[m[32m            "conectado": False,[m
+[32m+[m[32m            "mensagem": "Nao foi possivel conectar ao CLP.",[m
+[32m+[m[32m            "algum_ativo": False,[m
+[32m+[m[32m            "alarmes": None[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m    alarmes = {}[m
+[32m+[m[32m    erros = {}[m
+[32m+[m
+[32m+[m[32m    for var in VARIAVEIS_ALARMES:[m
+[32m+[m[32m        leitura = ler_variavel(plc, var)[m
+[32m+[m
+[32m+[m[32m        if leitura["sucesso"]:[m
+[32m+[m[32m            alarmes[var["nome"]] = leitura["valor_convertido"][m
+[32m+[m[32m        else:[m
+[32m+[m[32m            erros[var["nome"]] = leitura["categoria_erro"][m
+[32m+[m
+[32m+[m[32m    plc.disconnect()[m
+[32m+[m
+[32m+[m[32m    algum_ativo = any(alarmes.values()) if alarmes else False[m
+[32m+[m
+[32m+[m[32m    return {[m
+[32m+[m[32m        "conectado": True,[m
+[32m+[m[32m        "algum_ativo": algum_ativo,[m
+[32m+[m[32m        "alarmes": alarmes,[m
+[32m+[m[32m        "erros": erros if erros else None[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m
+ @app.post("/plc/salvar")[m
+ def plc_salvar():[m
+     """Le as variaveis de producao do CLP e salva uma leitura no MySQL."""[m

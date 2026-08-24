@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from plc_connection import conectar_plc
-from plc_reader import VARIAVEIS_PRODUCAO, ler_variavel
+from plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel
 from mysql_connection import conectar_mysql
 from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 from automacao import iniciar_leitura_automatica
@@ -85,6 +85,42 @@ def plc_producao():
     return {
         "conectado": True,
         "dados": dados,
+        "erros": erros if erros else None
+    }
+
+
+@app.get("/plc/alarmes")
+def plc_alarmes():
+    """Le em tempo real os alarmes (DB8) do CLP."""
+    plc = conectar_plc()
+
+    if not plc:
+        return {
+            "conectado": False,
+            "mensagem": "Nao foi possivel conectar ao CLP.",
+            "algum_ativo": False,
+            "alarmes": None
+        }
+
+    alarmes = {}
+    erros = {}
+
+    for var in VARIAVEIS_ALARMES:
+        leitura = ler_variavel(plc, var)
+
+        if leitura["sucesso"]:
+            alarmes[var["nome"]] = leitura["valor_convertido"]
+        else:
+            erros[var["nome"]] = leitura["categoria_erro"]
+
+    plc.disconnect()
+
+    algum_ativo = any(alarmes.values()) if alarmes else False
+
+    return {
+        "conectado": True,
+        "algum_ativo": algum_ativo,
+        "alarmes": alarmes,
         "erros": erros if erros else None
     }
 
