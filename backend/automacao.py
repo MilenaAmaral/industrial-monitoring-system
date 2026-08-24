@@ -23,9 +23,10 @@ from dotenv import load_dotenv
 
 from plc_connection import conectar_plc
 from mysql_connection import conectar_mysql
-from plc_reader import VARIAVEIS_PRODUCAO
+from plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel
 from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 from paradas import abrir_evento_parada, fechar_evento_parada, retomar_evento_aberto
+from alarmes import abrir_evento_alarme, fechar_evento_alarme, retomar_eventos_abertos
 
 load_dotenv()
 
@@ -38,6 +39,7 @@ ATIVA = os.getenv("LEITURA_AUTOMATICA_ATIVA", "true").lower() == "true"
 # transicao entre um ciclo e o outro.
 _estado_atual = None  # "rodando" | "parada" | None (ainda nao sabemos)
 _ultimo_tempo_rodando = None
+_estados_alarmes = {}  # nome_alarme -> True (ativo) | ausente (inativo)
 
 
 def _inicializar_estado():
@@ -45,11 +47,14 @@ def _inicializar_estado():
     Roda uma vez, ao iniciar o monitoramento. Verifica se ja existia uma
     parada em andamento no banco (de uma execucao anterior da API) e
     retoma o estado corretamente, em vez de assumir "rodando" as cegas.
+    Faz o mesmo para alarmes que ja estivessem ativos.
     """
-    global _estado_atual
+    global _estado_atual, _estados_alarmes
 
     evento_pendente = retomar_evento_aberto()
     _estado_atual = "parada" if evento_pendente else None
+
+    _estados_alarmes = retomar_eventos_abertos()
 
 
 def _detectar_e_tratar_estado(tempo_rodando, tempo_parado):
@@ -87,6 +92,37 @@ def _detectar_e_tratar_estado(tempo_rodando, tempo_parado):
     _estado_atual = novo_estado
 
 
+def _detectar_e_tratar_alarmes(plc):
+    """
+    Le cada alarme configurado em VARIAVEIS_ALARMES e compara com o
+    estado anterior em memoria. Abre/fecha um evento em eventos_alarme
+    quando um alarme liga ou desliga. Varios alarmes podem estar
+    ativos ao mesmo tempo, entao cada um e tratado independentemente.
+    """
+    global _estados_alarmes
+
+    for var in VARIAVEIS_ALARMES:
+        leitura = ler_variavel(plc, var)
+
+        if not leitura["sucesso"]:
+            print(f"[monitoramento] Falha ao ler alarme '{var['nome']}': {leitura['erro']}")
+            continue
+
+        nome = var["nome"]
+        ativo_agora = bool(leitura["valor_convertido"])
+        ativo_antes = _estados_alarmes.get(nome, False)
+
+        if ativo_agora and not ativo_antes:
+            abrir_evento_alarme(nome)
+            _estados_alarmes[nome] = True
+            print(f"[monitoramento] Alarme '{nome}' ativado.")
+
+        elif not ativo_agora and ativo_antes:
+            fechar_evento_alarme(nome)
+            _estados_alarmes.pop(nome, None)
+            print(f"[monitoramento] Alarme '{nome}' desativado.")
+
+
 def loop_monitoramento():
     print(
         f"[monitoramento] Iniciado - checando estado a cada "
@@ -106,6 +142,7 @@ def loop_monitoramento():
                 print("[monitoramento] Falha ao conectar no CLP. Pulando ciclo.")
             else:
                 valores = montar_valores(plc, VARIAVEIS_PRODUCAO)
+                _detectar_e_tratar_alarmes(plc)
                 plc.disconnect()
 
                 if valores is None:

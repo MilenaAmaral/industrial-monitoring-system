@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
 
 from plc_connection import conectar_plc
 from plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel
@@ -7,6 +8,7 @@ from mysql_connection import conectar_mysql
 from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 from automacao import iniciar_leitura_automatica
 from paradas import evento_em_andamento, listar_paradas, resumo_paradas
+from alarmes import eventos_em_andamento, listar_eventos_alarme, resumo_alarmes
 
 
 app = FastAPI(
@@ -166,9 +168,11 @@ def plc_salvar():
 @app.get("/producao/status")
 def producao_status():
     """
-    Estado atual da maquina (rodando/parada) e os cronometros atuais,
-    lidos ao vivo do CLP. Os tempos vem direto do acumulador do proprio
-    CLP - nunca zeram sozinhos, mesmo que a API reinicie.
+    Estado atual da maquina (rodando/parada/falha) e os cronometros
+    atuais, lidos ao vivo do CLP. Os tempos de producao vem direto do
+    acumulador do proprio CLP - nunca zeram sozinhos, mesmo que a API
+    reinicie. Se algum alarme estiver ativo, o estado "falha" tem
+    prioridade sobre rodando/parada.
     """
     plc = conectar_plc()
 
@@ -190,20 +194,36 @@ def producao_status():
     tempo_rodando = valores.get("TempoRodando", 0)
     tempo_parado = valores.get("TempoParado", 0)
 
-    parada_atual = evento_em_andamento()
+    alarmes_ativos = eventos_em_andamento()
 
-    if parada_atual:
-        estado = "parada"
-        duracao_parada_atual = tempo_parado - parada_atual["tempo_parado_inicio"]
-        info_parada_atual = {
-            "inicio": parada_atual["inicio"],
-            "duracao_segundos": duracao_parada_atual,
-        }
-    else:
-        estado = "rodando"
+    if alarmes_ativos:
+        estado = "falha"
         info_parada_atual = None
+    else:
+        parada_atual = evento_em_andamento()
+
+        if parada_atual:
+            estado = "parada"
+            duracao_parada_atual = tempo_parado - parada_atual["tempo_parado_inicio"]
+            info_parada_atual = {
+                "inicio": parada_atual["inicio"],
+                "duracao_segundos": duracao_parada_atual,
+            }
+        else:
+            estado = "rodando"
+            info_parada_atual = None
 
     resumo = resumo_paradas() or {}
+
+    agora = datetime.now()
+    info_alarmes_ativos = [
+        {
+            "nome": alarme["nome_alarme"],
+            "inicio": alarme["inicio"],
+            "duracao_segundos": int((agora - alarme["inicio"]).total_seconds()),
+        }
+        for alarme in alarmes_ativos
+    ]
 
     return {
         "conectado": True,
@@ -214,7 +234,20 @@ def producao_status():
         "caixas_por_palete": valores.get("ContagemCaixasPalete", 0),
         "parada_atual": info_parada_atual,
         "quantidade_paradas": resumo.get("quantidade", 0),
+        "alarmes_ativos": info_alarmes_ativos,
     }
+
+
+@app.get("/producao/alarmes")
+def producao_alarmes(limite: int = 50):
+    """Lista o historico de alarmes (mais novo primeiro)."""
+    return {"alarmes": listar_eventos_alarme(limite)}
+
+
+@app.get("/producao/alarmes/resumo")
+def producao_alarmes_resumo():
+    """Estatisticas por alarme: quantas vezes ativou e tempo total ativo."""
+    return {"resumo": resumo_alarmes()}
 
 
 @app.get("/producao/paradas")
