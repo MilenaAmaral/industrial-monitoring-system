@@ -108,11 +108,9 @@ body {
 }
 
 .dashboard {
-    width: min(1200px, 92%);
+    width: min(1200px, 100%);
 
     margin: 0 auto;
-
-    padding: 45px 0 30px;
 
     position: relative;
     z-index: 1;
@@ -121,17 +119,15 @@ body {
 
 /* HEADER */
 
-.header {
+.header-actions {
     display: flex;
 
     align-items: center;
 
-    justify-content: space-between;
-
-    margin-bottom: 35px;
+    gap: 12px;
 }
 
-.brand {
+.theme-toggle {
     display: flex;
 
     align-items: center;
@@ -266,6 +262,53 @@ body {
 
     color: var(--green);
 }
+
+.clock-widget {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 10px 15px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.clock-icon {
+    font-size: 15px;
+}
+
+.clock-widget strong {
+    display: block;
+
+    font-family: "Orbitron", sans-serif;
+
+    font-size: 12px;
+
+    letter-spacing: 0.5px;
+}
+
+.clock-widget small {
+    display: block;
+
+    margin-top: 2px;
+
+    color: var(--muted);
+
+    font-size: 8px;
+
+    letter-spacing: 1px;
+
+    text-transform: capitalize;
+}
+
+
+/* METRICS */
 
 
 /* METRICS */
@@ -854,21 +897,6 @@ footer {
 }
 
 @media (max-width: 600px) {
-
-    .dashboard {
-        width: 90%;
-
-        padding-top: 25px;
-    }
-
-    .header {
-        align-items: flex-start;
-
-        flex-direction: column;
-
-        gap: 20px;
-    }
-
     .metric-value strong {
         font-size: 32px;
     }

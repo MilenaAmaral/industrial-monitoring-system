@@ -1,40 +1,10 @@
 // ===============================
-// TEMA CLARO / ESCURO
-// ===============================
-
-const themeToggle = document.getElementById("theme-toggle");
-const themeIcon = document.getElementById("theme-icon");
-
-function aplicarTema(tema) {
-    if (tema === "light") {
-        document.body.classList.add("light-theme");
-        themeIcon.textContent = "☀️";
-    } else {
-        document.body.classList.remove("light-theme");
-        themeIcon.textContent = "🌙";
-    }
-
-    localStorage.setItem("industrial-monitor-tema", tema);
-}
-
-function alternarTema() {
-    const temaAtual = document.body.classList.contains("light-theme") ? "light" : "dark";
-    aplicarTema(temaAtual === "light" ? "dark" : "light");
-}
-
-themeToggle.addEventListener("click", alternarTema);
-aplicarTema(localStorage.getItem("industrial-monitor-tema") || "dark");
-
-
-// ===============================
 // CONFIGURAÇÃO
+// (tema claro/escuro, relógio local, API_URL, formatarTempo e
+// formatarDataHora agora vêm de js/common.js, incluído antes
+// deste arquivo no index.html)
 // ===============================
 
-// Descobre automaticamente o IP/host usado para acessar a página
-// (ex: 192.168.0.15) e usa o mesmo endereço para falar com a API,
-// que roda na porta 8000 no mesmo computador do backend/CLP.
-// Assim, qualquer dispositivo na rede funciona sem editar nada aqui.
-const API_URL = `http://${window.location.hostname}:8000`;
 const INTERVALO_FETCH_MS = 5000;   // busca dados novos da API a cada 5s
 const INTERVALO_TICK_MS = 1000;    // atualiza o relogio na tela a cada 1s
 
@@ -49,29 +19,9 @@ let baseTempoParado = 0;
 let baseTimestamp = Date.now();
 let estadoAtual = null; // "rodando" | "parada" | null
 
-
 // ===============================
-// FORMATAÇÃO DE TEMPO (segundos -> HH:MM:SS)
+// BUSCAR STATUS ATUAL DA PRODUÇÃO
 // ===============================
-
-function formatarTempo(totalSegundos) {
-    const seg = Math.max(0, Math.floor(totalSegundos));
-
-    const horas = Math.floor(seg / 3600);
-    const minutos = Math.floor((seg % 3600) / 60);
-    const segundos = seg % 60;
-
-    const pad = (n) => String(n).padStart(2, "0");
-
-    return `${pad(horas)}:${pad(minutos)}:${pad(segundos)}`;
-}
-
-function formatarDataHora(isoString) {
-    if (!isoString) return "--";
-    const data = new Date(isoString);
-    return data.toLocaleString("pt-BR");
-}
-
 
 // ===============================
 // BUSCAR STATUS ATUAL DA PRODUÇÃO
@@ -87,7 +37,7 @@ async function buscarStatus() {
             return;
         }
 
-        document.getElementById("plc-status").textContent = "ONLINE";
+        document.getElementById("plc-status").textContent = "CONECTADO";
         document.getElementById("caixas").textContent =
             dados.caixas_por_palete.toLocaleString("pt-BR");
         document.getElementById("paletes").textContent =
@@ -104,6 +54,7 @@ async function buscarStatus() {
         baseTimestamp = Date.now();
 
         atualizarEstadoNaTela();
+        atualizarAlarmesAtivos(dados.alarmes_ativos || []);
 
     } catch (erro) {
         console.error("Erro ao buscar status da produção:", erro);
@@ -165,43 +116,25 @@ function renderizarHistoricoParadas(paradas, resumo) {
         .join("");
 }
 
-
 // ===============================
-// BUSCAR ALARMES DO SISTEMA
+// ALARMES DO SISTEMA (com contabilização de tempo, salvos no banco)
+// NOMES_ALARMES vem de js/common.js (compartilhado com a página de
+// Histórico de Paradas).
 // ===============================
 
-// Nomes tecnicos (vindos do CLP) -> texto amigavel para exibir.
-// Conforme mais alarmes forem cadastrados no backend, basta
-// adicionar a traducao aqui.
-const NOMES_ALARMES = {
-    SistemaDesligado: "Sistema Desligado",
-    EmergenciaAcionada: "Emergência Acionada",
-    SistemaEmManual: "Sistema em Manual",
-};
+// Nome tecnico do alarme que deve disparar a notificacao especial
+// (som + banner + notificacao do navegador).
+const ALARME_EMERGENCIA = "EmergenciaAcionada";
 
-async function buscarAlarmes() {
-    try {
-        const resposta = await fetch(`${API_URL}/plc/alarmes`);
-        const dados = await resposta.json();
+let emergenciaAtiva = false;
 
-        if (!dados.conectado) {
-            return;
-        }
-
-        renderizarAlarmes(dados.alarmes || {}, dados.algum_ativo);
-
-    } catch (erro) {
-        console.error("Erro ao buscar alarmes:", erro);
-    }
-}
-
-function renderizarAlarmes(alarmes, algumAtivo) {
+// Atualiza o badge "ALERTA/OK" com base no que veio de /producao/status
+// (dados.alarmes_ativos) e decide se precisa disparar/parar a notificacao
+// de emergencia. E chamada a cada 5s, junto do buscarStatus.
+function atualizarAlarmesAtivos(alarmesAtivos) {
     const statusEl = document.getElementById("alarmes-status");
-    const lista = document.getElementById("alarmes-list");
 
-    const ativos = Object.entries(alarmes).filter(([, valor]) => valor === true);
-
-    if (algumAtivo) {
+    if (alarmesAtivos.length > 0) {
         statusEl.textContent = "ALERTA";
         statusEl.style.color = "var(--red)";
     } else {
@@ -209,18 +142,141 @@ function renderizarAlarmes(alarmes, algumAtivo) {
         statusEl.style.color = "var(--green)";
     }
 
-    if (ativos.length === 0) {
-        lista.innerHTML = '<li class="stops-empty">Nenhum alarme ativo.</li>';
+    const temEmergencia = alarmesAtivos.some((a) => a.nome === ALARME_EMERGENCIA);
+
+    if (temEmergencia && !emergenciaAtiva) {
+        emergenciaAtiva = true;
+        emergenciaSilenciada = false;
+        dispararEmergencia();
+    } else if (!temEmergencia && emergenciaAtiva) {
+        emergenciaAtiva = false;
+        pararEmergencia();
+    }
+}
+
+function dispararEmergencia() {
+    const banner = document.getElementById("emergencia-banner");
+    banner.hidden = false;
+
+    iniciarBeepContinuo();
+
+    if ("Notification" in window) {
+        if (Notification.permission === "granted") {
+            new Notification("🚨 Emergência acionada", {
+                body: "A emergência foi acionada no CLP. Verifique a máquina imediatamente.",
+                requireInteraction: true,
+            });
+        } else if (Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+}
+
+function pararEmergencia() {
+    const banner = document.getElementById("emergencia-banner");
+    banner.hidden = true;
+    pararBeepContinuo();
+}
+
+// Gera um "beep" com Web Audio API (sem precisar de nenhum arquivo de
+// som externo) e repete em loop enquanto a emergencia estiver ativa.
+function tocarBeep() {
+    try {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const oscilador = audioCtx.createOscillator();
+        const ganho = audioCtx.createGain();
+
+        oscilador.type = "square";
+        oscilador.frequency.value = 880;
+        ganho.gain.value = 0.15;
+
+        oscilador.connect(ganho);
+        ganho.connect(audioCtx.destination);
+
+        oscilador.start();
+        oscilador.stop(audioCtx.currentTime + 0.35);
+    } catch (erro) {
+        console.error("Erro ao tocar som de alerta:", erro);
+    }
+}
+
+function iniciarBeepContinuo() {
+    if (beepIntervalId || emergenciaSilenciada) return;
+
+    tocarBeep();
+    beepIntervalId = setInterval(tocarBeep, 800);
+}
+
+function pararBeepContinuo() {
+    if (beepIntervalId) {
+        clearInterval(beepIntervalId);
+        beepIntervalId = null;
+    }
+}
+
+document.getElementById("emergencia-silenciar").addEventListener("click", () => {
+    emergenciaSilenciada = true;
+    pararBeepContinuo();
+});
+
+// Pede permissao de notificacao assim que a pagina carrega, para que o
+// navegador ja esteja autorizado quando uma emergencia real acontecer.
+if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+}
+
+
+// ===============================
+// HISTÓRICO DE ALARMES (lista + resumo, vindos do banco)
+// ===============================
+
+async function buscarHistoricoAlarmes() {
+    try {
+        const [respAlarmes, respResumo] = await Promise.all([
+            fetch(`${API_URL}/producao/alarmes?limite=20`),
+            fetch(`${API_URL}/producao/alarmes/resumo`),
+        ]);
+
+        const { alarmes } = await respAlarmes.json();
+        const { resumo } = await respResumo.json();
+
+        renderizarHistoricoAlarmes(alarmes, resumo);
+
+    } catch (erro) {
+        console.error("Erro ao buscar histórico de alarmes:", erro);
+    }
+}
+
+function renderizarHistoricoAlarmes(alarmes, resumo) {
+    const lista = document.getElementById("alarmes-list");
+
+    if (!alarmes || alarmes.length === 0) {
+        lista.innerHTML = '<li class="stops-empty">Nenhum alarme registrado ainda.</li>';
         return;
     }
 
-    lista.innerHTML = ativos
-        .map(([nomeTecnico]) => {
-            const nomeAmigavel = NOMES_ALARMES[nomeTecnico] || nomeTecnico;
+    lista.innerHTML = alarmes
+        .map((alarme) => {
+            const nomeAmigavel = NOMES_ALARMES[alarme.nome_alarme] || alarme.nome_alarme;
+            const emAndamento = alarme.duracao_segundos === null;
+
+            const duracao = emAndamento
+                ? "EM ANDAMENTO"
+                : formatarTempo(alarme.duracao_segundos);
+
+            const fimTexto = emAndamento ? "agora" : formatarDataHora(alarme.fim);
+
             return `
                 <li>
-                    <span class="stop-time">${nomeAmigavel}</span>
-                    <span class="stop-duration" style="color: var(--red)">ATIVO</span>
+                    <span class="stop-time">
+                        ${nomeAmigavel} · ${formatarDataHora(alarme.inicio)} → ${fimTexto}
+                    </span>
+                    <span class="stop-duration" style="${emAndamento ? "color: var(--red)" : ""}">
+                        ${duracao}
+                    </span>
                 </li>
             `;
         })
@@ -275,6 +331,14 @@ function atualizarEstadoNaTela() {
         motorDot.style.background = "var(--red)";
         motorDot.style.boxShadow = "0 0 12px var(--red)";
         motorTexto.style.color = "var(--red)";
+
+    } else if (estadoAtual === "falha") {
+        estadoEl.textContent = "EM FALHA";
+        estadoEl.style.color = "var(--red)";
+
+        motorDot.style.background = "var(--red)";
+        motorDot.style.boxShadow = "0 0 12px var(--red)";
+        motorTexto.style.color = "var(--red)";
     }
 
     atualizarEficiencia();
@@ -312,23 +376,9 @@ function atualizarHorario() {
 }
 
 function marcarOffline() {
-    document.getElementById("plc-status").textContent = "OFFLINE";
+    document.getElementById("plc-status").textContent = "SEM CONEXÃO";
 
     const estadoEl = document.getElementById("estado");
     estadoEl.textContent = "SEM CONEXÃO";
     estadoEl.style.color = "var(--red)";
 }
-
-
-// ===============================
-// INICIALIZAÇÃO
-// ===============================
-
-buscarStatus();
-buscarHistoricoParadas();
-buscarAlarmes();
-
-setInterval(buscarStatus, INTERVALO_FETCH_MS);
-setInterval(buscarHistoricoParadas, INTERVALO_FETCH_MS);
-setInterval(buscarAlarmes, INTERVALO_FETCH_MS);
-setInterval(tick, INTERVALO_TICK_MS);

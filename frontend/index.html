@@ -16,48 +16,154 @@
     >
 
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css">
+
+    <style>
+        .emergencia-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 14px 20px;
+            background: #c62828;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-align: center;
+            box-shadow: 0 2px 16px rgba(198, 40, 40, 0.6);
+            animation: emergencia-pulsar 1s infinite;
+        }
+
+        .emergencia-banner[hidden] {
+            display: none;
+        }
+
+        .emergencia-banner-botao {
+            flex-shrink: 0;
+            background: #fff;
+            color: #c62828;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        @keyframes emergencia-pulsar {
+            0%, 100% { background: #c62828; }
+            50% { background: #8e0000; }
+        }
+    </style>
 </head>
 
 <body>
+
+    <div id="emergencia-banner" class="emergencia-banner" hidden>
+        <span class="emergencia-banner-texto">
+            🚨 EMERGÊNCIA ACIONADA — verifique a máquina imediatamente
+        </span>
+        <button id="emergencia-silenciar" class="emergencia-banner-botao">
+            Silenciar som
+        </button>
+    </div>
 
     <div class="background-glow glow-one"></div>
     <div class="background-glow glow-two"></div>
 
     <main class="dashboard">
 
-        <!-- HEADER -->
-        <header class="header">
+    <div class="app-shell">
 
-            <div class="brand">
+        <!-- SIDEBAR / NAVEGAÇÃO -->
+        <aside class="sidebar">
+
+            <div class="sidebar-brand brand">
                 <div class="brand-icon">
                     <span></span>
                 </div>
 
                 <div>
                     <h1>INDUSTRIAL MONITOR</h1>
-                    <p>SIEMENS S7-1500 • MACHINE CONTROL SYSTEM</p>
+                    <p>SIEMENS S7-1500</p>
                 </div>
             </div>
 
-            <div class="header-actions">
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item active">
+                    <span class="nav-icon">◉</span> Dashboard
+                </a>
+                <a href="producao.html" class="nav-item">
+                    <span class="nav-icon">▤</span> Histórico de Produção
+                </a>
+                <a href="paradas.html" class="nav-item">
+                    <span class="nav-icon">⏸</span> Histórico de Paradas
+                </a>
+                <a href="graficos-producao.html" class="nav-item">
+                    <span class="nav-icon">▲</span> Produção por Dia
+                </a>
+                <a href="falhas.html" class="nav-item">
+                    <span class="nav-icon">⚠</span> Falhas / Alarmes
+                </a>
+                <a href="tempo-parado.html" class="nav-item">
+                    <span class="nav-icon">◷</span> Tempo Parado
+                </a>
+                <a href="eficiencia.html" class="nav-item">
+                    <span class="nav-icon">◈</span> Eficiência
+                </a>
+            </nav>
 
-                <button id="theme-toggle" class="theme-toggle" aria-label="Alternar tema claro/escuro">
-                    <span id="theme-icon">🌙</span>
-                </button>
+            <div class="sidebar-footer">
+                INDUSTRIAL MONITOR v1.1<br>
+                PLC COMMUNICATION SYSTEM
+            </div>
 
-                <div class="connection">
-                    <span class="connection-dot"></span>
+        </aside>
 
-                    <div>
-                        <small>PLC STATUS</small>
-                        <strong id="plc-status">ONLINE</strong>
+        <div class="main-area">
+
+            <!-- TOPBAR -->
+            <header class="topbar">
+
+                <div class="topbar-title">
+                    DASHBOARD PRINCIPAL
+                    <small>MACHINE CONTROL SYSTEM · VISÃO GERAL EM TEMPO REAL</small>
+                </div>
+
+                <div class="topbar-actions">
+
+                    <div class="clock-widget">
+                        <span class="clock-icon">🕒</span>
+                        <div>
+                            <strong id="relogio-hora">--:--:--</strong>
+                            <small id="relogio-data">--/--/----</small>
+                        </div>
                     </div>
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Alternar tema claro/escuro">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+
+                    <div class="connection">
+                        <span class="connection-dot"></span>
+
+                        <div>
+                            <small>PLC STATUS</small>
+                            <strong id="plc-status">ONLINE</strong>
+                        </div>
+                    </div>
+
                 </div>
 
-            </div>
+            </header>
 
-        </header>
-
+            <main class="page-content">
+                <div class="dashboard">
 
         <!-- PRINCIPAIS INDICADORES -->
         <section class="metrics">
@@ -291,14 +397,19 @@
 
         </section>
 
-
         <footer>
-            <span>INDUSTRIAL MONITOR v1.0</span>
+            <span>INDUSTRIAL MONITOR v1.1</span>
             <span>PLC COMMUNICATION SYSTEM</span>
         </footer>
 
-    </main>
+                </div>
+            </main>
 
+        </div>
+
+    </div>
+
+    <script src="js/common.js"></script>
     <script src="js/main.js"></script>
 
 </body>
