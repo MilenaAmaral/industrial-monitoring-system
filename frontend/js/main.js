@@ -450,11 +450,30 @@ function marcarOffline() {
 // INICIALIZAÇÃO
 // ===============================
 
-buscarStatus();
-buscarHistoricoParadas();
-buscarHistoricoAlarmes();
 
-setInterval(buscarStatus, INTERVALO_FETCH_MS);
-setInterval(buscarHistoricoParadas, INTERVALO_FETCH_MS);
-setInterval(buscarHistoricoAlarmes, INTERVALO_FETCH_MS);
-setInterval(tick, INTERVALO_TICK_MS);
+// ===============================
+// RELÓGIO LOCAL EM TEMPO REAL (cabeçalho)
+// ===============================
+
+function atualizarRelogioLocal() {
+    const agora = new Date();
+
+    const elHora = document.getElementById("relogio-hora");
+    const elData = document.getElementById("relogio-data");
+
+    if (elHora) {
+        elHora.textContent = agora.toLocaleTimeString("pt-BR");
+    }
+
+    if (elData) {
+        const diaSemana = agora
+            .toLocaleDateString("pt-BR", { weekday: "short" })
+            .replace(".", "");
+        const dataFormatada = agora.toLocaleDateString("pt-BR");
+
+        elData.textContent = `${diaSemana}, ${dataFormatada}`;
+    }
+}
+
+atualizarRelogioLocal();
+setInterval(atualizarRelogioLocal, 1000);

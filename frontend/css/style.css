@@ -267,6 +267,53 @@ body {
     color: var(--green);
 }
 
+.clock-widget {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 10px 15px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.clock-icon {
+    font-size: 15px;
+}
+
+.clock-widget strong {
+    display: block;
+
+    font-family: "Orbitron", sans-serif;
+
+    font-size: 12px;
+
+    letter-spacing: 0.5px;
+}
+
+.clock-widget small {
+    display: block;
+
+    margin-top: 2px;
+
+    color: var(--muted);
+
+    font-size: 8px;
+
+    letter-spacing: 1px;
+
+    text-transform: capitalize;
+}
+
+
+/* METRICS */
+
 
 /* METRICS */
 
