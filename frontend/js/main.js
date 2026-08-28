@@ -1,40 +1,10 @@
 // ===============================
-// TEMA CLARO / ESCURO
-// ===============================
-
-const themeToggle = document.getElementById("theme-toggle");
-const themeIcon = document.getElementById("theme-icon");
-
-function aplicarTema(tema) {
-    if (tema === "light") {
-        document.body.classList.add("light-theme");
-        themeIcon.textContent = "☀️";
-    } else {
-        document.body.classList.remove("light-theme");
-        themeIcon.textContent = "🌙";
-    }
-
-    localStorage.setItem("industrial-monitor-tema", tema);
-}
-
-function alternarTema() {
-    const temaAtual = document.body.classList.contains("light-theme") ? "light" : "dark";
-    aplicarTema(temaAtual === "light" ? "dark" : "light");
-}
-
-themeToggle.addEventListener("click", alternarTema);
-aplicarTema(localStorage.getItem("industrial-monitor-tema") || "dark");
-
-
-// ===============================
 // CONFIGURAÇÃO
+// (tema claro/escuro, relógio local, API_URL, formatarTempo e
+// formatarDataHora agora vêm de js/common.js, incluído antes
+// deste arquivo no index.html)
 // ===============================
 
-// Descobre automaticamente o IP/host usado para acessar a página
-// (ex: 192.168.0.15) e usa o mesmo endereço para falar com a API,
-// que roda na porta 8000 no mesmo computador do backend/CLP.
-// Assim, qualquer dispositivo na rede funciona sem editar nada aqui.
-const API_URL = `http://${window.location.hostname}:8000`;
 const INTERVALO_FETCH_MS = 5000;   // busca dados novos da API a cada 5s
 const INTERVALO_TICK_MS = 1000;    // atualiza o relogio na tela a cada 1s
 
@@ -49,29 +19,9 @@ let baseTempoParado = 0;
 let baseTimestamp = Date.now();
 let estadoAtual = null; // "rodando" | "parada" | null
 
-
 // ===============================
-// FORMATAÇÃO DE TEMPO (segundos -> HH:MM:SS)
+// BUSCAR STATUS ATUAL DA PRODUÇÃO
 // ===============================
-
-function formatarTempo(totalSegundos) {
-    const seg = Math.max(0, Math.floor(totalSegundos));
-
-    const horas = Math.floor(seg / 3600);
-    const minutos = Math.floor((seg % 3600) / 60);
-    const segundos = seg % 60;
-
-    const pad = (n) => String(n).padStart(2, "0");
-
-    return `${pad(horas)}:${pad(minutos)}:${pad(segundos)}`;
-}
-
-function formatarDataHora(isoString) {
-    if (!isoString) return "--";
-    const data = new Date(isoString);
-    return data.toLocaleString("pt-BR");
-}
-
 
 // ===============================
 // BUSCAR STATUS ATUAL DA PRODUÇÃO
@@ -444,36 +394,3 @@ function marcarOffline() {
     estadoEl.textContent = "SEM CONEXÃO";
     estadoEl.style.color = "var(--red)";
 }
-
-
-// ===============================
-// INICIALIZAÇÃO
-// ===============================
-
-
-// ===============================
-// RELÓGIO LOCAL EM TEMPO REAL (cabeçalho)
-// ===============================
-
-function atualizarRelogioLocal() {
-    const agora = new Date();
-
-    const elHora = document.getElementById("relogio-hora");
-    const elData = document.getElementById("relogio-data");
-
-    if (elHora) {
-        elHora.textContent = agora.toLocaleTimeString("pt-BR");
-    }
-
-    if (elData) {
-        const diaSemana = agora
-            .toLocaleDateString("pt-BR", { weekday: "short" })
-            .replace(".", "");
-        const dataFormatada = agora.toLocaleDateString("pt-BR");
-
-        elData.textContent = `${diaSemana}, ${dataFormatada}`;
-    }
-}
-
-atualizarRelogioLocal();
-setInterval(atualizarRelogioLocal, 1000);
