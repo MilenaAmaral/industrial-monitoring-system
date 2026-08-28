@@ -83,6 +83,21 @@ function formatarNumero(valor) {
 
 
 // ===============================
+// ALARMES DO SISTEMA 
+// ===============================
+
+const NOMES_ALARMES = {
+    SistemaDesligado: "Sistema Desligado",
+    EmergenciaAcionada: "Emergência Acionada",
+    SistemaEmManual: "Sistema em Manual",
+    SistemaEmEspera: "Sistema em Espera - Realizar Start",
+};
+
+function nomeAmigavelAlarme(nomeTecnico) {
+    return NOMES_ALARMES[nomeTecnico] || nomeTecnico;
+}
+
+// ===============================
 // RELÓGIO LOCAL EM TEMPO REAL (topo de todas as páginas)
 // ===============================
 

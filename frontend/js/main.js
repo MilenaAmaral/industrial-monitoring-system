@@ -116,29 +116,17 @@ function renderizarHistoricoParadas(paradas, resumo) {
         .join("");
 }
 
-
 // ===============================
 // ALARMES DO SISTEMA (com contabilização de tempo, salvos no banco)
+// NOMES_ALARMES vem de js/common.js (compartilhado com a página de
+// Histórico de Paradas).
 // ===============================
-
-// Nomes tecnicos (vindos do CLP) -> texto amigavel para exibir.
-// Conforme mais alarmes forem cadastrados no backend, basta
-// adicionar a traducao aqui.
-const NOMES_ALARMES = {
-    SistemaDesligado: "Sistema Desligado",
-    EmergenciaAcionada: "Emergência Acionada",
-    SistemaEmManual: "Sistema em Manual",
-    SistemaEmEspera: "Sistema em Espera - Realizar Start",
-};
 
 // Nome tecnico do alarme que deve disparar a notificacao especial
 // (som + banner + notificacao do navegador).
 const ALARME_EMERGENCIA = "EmergenciaAcionada";
 
 let emergenciaAtiva = false;
-let emergenciaSilenciada = false;
-let audioCtx = null;
-let beepIntervalId = null;
 
 // Atualiza o badge "ALERTA/OK" com base no que veio de /producao/status
 // (dados.alarmes_ativos) e decide se precisa disparar/parar a notificacao

@@ -142,7 +142,13 @@ def evento_em_andamento():
 
 
 def listar_paradas(limite=50):
-    """Retorna as paradas mais recentes (mais nova primeiro)."""
+    """
+    Retorna as paradas mais recentes (mais nova primeiro), com o
+    'motivo' de cada uma: os nomes tecnicos dos alarmes (tabela
+    eventos_alarme) que estavam ativos durante aquela parada, unidos
+    por virgula. E None quando nenhum alarme se sobrepoe ao periodo
+    da parada (ex: parada manual sem alarme).
+    """
     conexao = conectar_mysql()
     if not conexao:
         return []
@@ -151,9 +157,15 @@ def listar_paradas(limite=50):
         cursor = conexao.cursor(dictionary=True)
         cursor.execute(
             """
-            SELECT id, inicio, fim, duracao_segundos
-            FROM eventos_parada
-            ORDER BY inicio DESC
+            SELECT
+                p.id, p.inicio, p.fim, p.duracao_segundos,
+                GROUP_CONCAT(DISTINCT a.nome_alarme ORDER BY a.inicio SEPARATOR ',') AS motivo
+            FROM eventos_parada p
+            LEFT JOIN eventos_alarme a
+                ON a.inicio <= COALESCE(p.fim, NOW())
+                AND p.inicio <= COALESCE(a.fim, NOW())
+            GROUP BY p.id, p.inicio, p.fim, p.duracao_segundos
+            ORDER BY p.inicio DESC
             LIMIT %s
             """,
             (limite,),
