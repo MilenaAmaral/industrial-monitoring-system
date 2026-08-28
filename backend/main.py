@@ -9,7 +9,7 @@ from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 from automacao import iniciar_leitura_automatica
 from paradas import evento_em_andamento, listar_paradas, resumo_paradas
 from alarmes import eventos_em_andamento, listar_eventos_alarme, resumo_alarmes
-from historico import listar_leituras, resumo_periodo
+from historico import listar_leituras, resumo_periodo, producao_diaria
 
 
 app = FastAPI(
@@ -299,6 +299,21 @@ def producao_historico_resumo(data_inicio: str = None, data_fim: str = None):
     intervalo.
     """
     resultado = resumo_periodo(data_inicio, data_fim)
+
+    if "erro" in resultado:
+        return {"sucesso": False, "mensagem": resultado["erro"]}
+
+    return {"sucesso": True, **resultado}
+
+
+
+@app.get("/producao/historico/diario")
+def producao_historico_diario(data_inicio: str = None, data_fim: str = None):
+    """
+    Producao, tempo rodando, tempo parado e eficiencia agregados por dia
+    (usado pelos graficos de Producao por Dia, Tempo Parado e Eficiencia).
+    """
+    resultado = producao_diaria(data_inicio, data_fim)
 
     if "erro" in resultado:
         return {"sucesso": False, "mensagem": resultado["erro"]}

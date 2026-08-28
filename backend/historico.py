@@ -197,3 +197,80 @@ def resumo_periodo(data_inicio=None, data_fim=None):
         return {"erro": "Erro ao consultar o resumo do periodo no banco."}
     finally:
         conexao.close()
+
+
+
+def producao_diaria(data_inicio=None, data_fim=None):
+    """
+    Producao, tempo rodando e tempo parado agregados POR DIA, calculados
+    como MAX(acumulador) - MIN(acumulador) dentro de cada dia.
+
+    Retorna tambem a eficiencia do dia (tempo_rodando / (tempo_rodando +
+    tempo_parado)), calculada a partir dos mesmos acumuladores.
+    """
+    inicio, fim, erro = _parse_intervalo(data_inicio, data_fim)
+    if erro:
+        return {"erro": erro}
+
+    conexao = conectar_mysql()
+    if not conexao:
+        return {"erro": "Nao foi possivel conectar ao MySQL."}
+
+    try:
+        where, parametros = _montar_where(inicio, fim)
+
+        cursor = conexao.cursor(dictionary=True)
+        cursor.execute(
+            f"""
+            SELECT
+                DATE(data_hora) AS dia,
+                MIN(contagem_paletes_prontos) AS contagem_min,
+                MAX(contagem_paletes_prontos) AS contagem_max,
+                MIN(tempo_rodando) AS tempo_rodando_min,
+                MAX(tempo_rodando) AS tempo_rodando_max,
+                MIN(tempo_parado) AS tempo_parado_min,
+                MAX(tempo_parado) AS tempo_parado_max,
+                COUNT(*) AS quantidade_leituras
+            FROM leituras_producao
+            {where}
+            GROUP BY DATE(data_hora)
+            ORDER BY dia ASC
+            """,
+            parametros,
+        )
+        linhas = cursor.fetchall()
+        cursor.close()
+
+        dias = []
+
+        for linha in linhas:
+            producao_dia = max(0, linha["contagem_max"] - linha["contagem_min"])
+            tempo_rodando_dia = max(0, linha["tempo_rodando_max"] - linha["tempo_rodando_min"])
+            tempo_parado_dia = max(0, linha["tempo_parado_max"] - linha["tempo_parado_min"])
+            tempo_total_dia = tempo_rodando_dia + tempo_parado_dia
+
+            eficiencia_dia = (
+                round((tempo_rodando_dia / tempo_total_dia) * 100, 1)
+                if tempo_total_dia > 0
+                else 0
+            )
+
+            dia = linha["dia"]
+
+            dias.append(
+                {
+                    "dia": dia.isoformat() if hasattr(dia, "isoformat") else str(dia),
+                    "producao_dia": producao_dia,
+                    "tempo_rodando_dia": tempo_rodando_dia,
+                    "tempo_parado_dia": tempo_parado_dia,
+                    "eficiencia_dia": eficiencia_dia,
+                    "quantidade_leituras": linha["quantidade_leituras"],
+                }
+            )
+
+        return {"dias": dias}
+    except Exception as erro_consulta:
+        print(f"[historico] Erro ao calcular producao diaria: {erro_consulta}")
+        return {"erro": "Erro ao consultar a producao diaria no banco."}
+    finally:
+        conexao.close()
