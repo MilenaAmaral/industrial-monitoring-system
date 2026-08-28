@@ -9,6 +9,7 @@ from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 from automacao import iniciar_leitura_automatica
 from paradas import evento_em_andamento, listar_paradas, resumo_paradas
 from alarmes import eventos_em_andamento, listar_eventos_alarme, resumo_alarmes
+from historico import listar_leituras, resumo_periodo
 
 
 app = FastAPI(
@@ -267,3 +268,39 @@ def producao_paradas_resumo():
         "maior_parada_segundos": 0,
         "media_segundos": 0,
     }
+
+
+
+@app.get("/producao/historico")
+def producao_historico(
+    data_inicio: str = None,
+    data_fim: str = None,
+    pagina: int = 1,
+    por_pagina: int = 50,
+):
+    """
+    Lista o historico de leituras de producao (tabela leituras_producao),
+    mais recente primeiro, com filtro opcional por data (AAAA-MM-DD) e
+    paginacao.
+    """
+    resultado = listar_leituras(data_inicio, data_fim, pagina, por_pagina)
+
+    if "erro" in resultado:
+        return {"sucesso": False, "mensagem": resultado["erro"]}
+
+    return {"sucesso": True, **resultado}
+
+
+@app.get("/producao/historico/resumo")
+def producao_historico_resumo(data_inicio: str = None, data_fim: str = None):
+    """
+    Totais do periodo filtrado (producao, tempo rodando e tempo parado),
+    calculados pela diferenca entre a primeira e a ultima leitura do
+    intervalo.
+    """
+    resultado = resumo_periodo(data_inicio, data_fim)
+
+    if "erro" in resultado:
+        return {"sucesso": False, "mensagem": resultado["erro"]}
+
+    return {"sucesso": True, **resultado}
