@@ -24,6 +24,7 @@
         }
 
         localStorage.setItem("industrial-monitor-tema", tema);
+        window.dispatchEvent(new CustomEvent("tema-alterado", { detail: { tema } }));
     }
 
     function alternarTema() {
@@ -45,6 +46,27 @@
 
 const API_URL = `http://${window.location.hostname}:8000`;
 
+// ===============================
+// CORES DOS GRÁFICOS (Chart.js) — lidas das variáveis de tema em
+// tempo real, para os gráficos acompanharem o tema claro/escuro.
+// ===============================
+
+function coresGrafico() {
+    const estilo = getComputedStyle(document.body);
+    const cor = (nome) => estilo.getPropertyValue(nome).trim();
+
+    return {
+        cyan: cor("--cyan"),
+        blue: cor("--blue"),
+        green: cor("--green"),
+        red: cor("--red"),
+        text: cor("--text"),
+        muted: cor("--muted"),
+        grade: document.body.classList.contains("light-theme")
+            ? "rgba(15, 23, 42, 0.08)"
+            : "rgba(255, 255, 255, 0.06)",
+    };
+}
 
 // ===============================
 // FORMATAÇÃO (compartilhada entre páginas)
