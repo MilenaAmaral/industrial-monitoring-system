@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Industrial Monitor · Falhas / Alarmes</title>
+
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css">
+
+    <script src="js/vendor/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+    <div class="background-glow glow-one"></div>
+    <div class="background-glow glow-two"></div>
+
+    <div class="app-shell">
+
+        <!-- SIDEBAR / NAVEGAÇÃO -->
+        <aside class="sidebar">
+
+            <div class="sidebar-brand brand">
+                <div class="brand-icon">
+                    <span></span>
+                </div>
+
+                <div>
+                    <h1>INDUSTRIAL MONITOR</h1>
+                    <p>SIEMENS S7-1500</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <span class="nav-icon">◉</span> Dashboard
+                </a>
+                <a href="producao.html" class="nav-item">
+                    <span class="nav-icon">▤</span> Histórico de Produção
+                </a>
+                <a href="paradas.html" class="nav-item">
+                    <span class="nav-icon">⏸</span> Histórico de Paradas
+                </a>
+                <a href="graficos-producao.html" class="nav-item">
+                    <span class="nav-icon">▲</span> Produção por Dia
+                </a>
+                <a href="falhas.html" class="nav-item active">
+                    <span class="nav-icon">⚠</span> Falhas / Alarmes
+                </a>
+                <a href="tempo-parado.html" class="nav-item">
+                    <span class="nav-icon">◷</span> Tempo Parado
+                </a>
+                <a href="eficiencia.html" class="nav-item">
+                    <span class="nav-icon">◈</span> Eficiência
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                INDUSTRIAL MONITOR v1.1<br>
+                PLC COMMUNICATION SYSTEM
+            </div>
+
+        </aside>
+
+        <div class="main-area">
+
+            <!-- TOPBAR -->
+            <header class="topbar">
+
+                <div class="topbar-title">
+                    FALHAS / ALARMES
+                    <small>GRÁFICOS E HISTÓRICO DE ALARMES DO SISTEMA</small>
+                </div>
+
+                <div class="topbar-actions">
+
+                    <div class="clock-widget">
+                        <span class="clock-icon">🕒</span>
+                        <div>
+                            <strong id="relogio-hora">--:--:--</strong>
+                            <small id="relogio-data">--/--/----</small>
+                        </div>
+                    </div>
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Alternar tema claro/escuro">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+
+                </div>
+
+            </header>
+
+            <main class="page-content">
+                <div class="dashboard">
+
+                    <!-- RESUMO -->
+                    <section class="metrics">
+
+                        <article class="metric-card">
+                            <div class="metric-header">
+                                <span>ALARMES ATIVOS AGORA</span>
+                                <span class="metric-icon">⚠</span>
+                            </div>
+                            <div class="metric-value">
+                                <strong id="resumo-ativos">0</strong>
+                                <span>ATIVOS</span>
+                            </div>
+                            <div class="metric-line"></div>
+                            <small id="resumo-ativos-status">OK</small>
+                        </article>
+
+                        <article class="metric-card">
+                            <div class="metric-header">
+                                <span>TIPOS DE ALARME</span>
+                                <span class="metric-icon">◈</span>
+                            </div>
+                            <div class="metric-value">
+                                <strong id="resumo-tipos">0</strong>
+                                <span>REGISTRADOS</span>
+                            </div>
+                            <div class="metric-line"></div>
+                            <small>COM PELO MENOS 1 OCORRÊNCIA</small>
+                        </article>
+
+                        <article class="metric-card">
+                            <div class="metric-header">
+                                <span>TEMPO TOTAL EM ALARME</span>
+                                <span class="metric-icon">◷</span>
+                            </div>
+                            <div class="metric-value">
+                                <strong id="resumo-tempo-total" style="font-size: 28px;">00:00:00</strong>
+                            </div>
+                            <div class="metric-line"></div>
+                            <small>SOMA DE TODOS OS ALARMES</small>
+                        </article>
+
+                    </section>
+
+                    <!-- GRÁFICOS -->
+                    <div class="graficos-grid">
+
+                        <div class="grafico-card">
+                            <div class="grafico-card-titulo">
+                                <h2>OCORRÊNCIAS POR ALARME</h2>
+                                <span>QUANTIDADE</span>
+                            </div>
+                            <div class="grafico-card-canvas-wrap">
+                                <canvas id="grafico-ocorrencias"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="grafico-card">
+                            <div class="grafico-card-titulo">
+                                <h2>TEMPO TOTAL POR ALARME</h2>
+                                <span>MINUTOS</span>
+                            </div>
+                            <div class="grafico-card-canvas-wrap">
+                                <canvas id="grafico-tempo-alarme"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- TABELA -->
+                    <div class="section-title">
+                        <h2>HISTÓRICO DE ALARMES</h2>
+                        <small id="tabela-contagem">--</small>
+                    </div>
+
+                    <div class="tabela-wrap">
+                        <table class="tabela-dados">
+                            <thead>
+                                <tr>
+                                    <th>ALARME</th>
+                                    <th>INÍCIO</th>
+                                    <th>FIM</th>
+                                    <th>DURAÇÃO</th>
+                                    <th>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-corpo">
+                                <tr>
+                                    <td colspan="5" class="tabela-vazia">Carregando alarmes…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <footer>
+                        <span>INDUSTRIAL MONITOR v1.1</span>
+                        <span>PLC COMMUNICATION SYSTEM</span>
+                    </footer>
+
+                </div>
+            </main>
+
+        </div>
+
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/falhas.js"></script>
+
+</body>
+</html>
