@@ -19,6 +19,13 @@ let baseTempoParado = 0;
 let baseTimestamp = Date.now();
 let estadoAtual = null; // "rodando" | "parada" | null
 
+// Variaveis usadas pela notificacao de emergencia (declaradas aqui pois
+// antes nao existiam em lugar nenhum do arquivo, o que quebrava
+// iniciarBeepContinuo/tocarBeep com "is not defined" na primeira emergencia).
+let beepIntervalId = null;
+let audioCtx = null;
+let emergenciaSilenciada = false;
+
 // ===============================
 // BUSCAR STATUS ATUAL DA PRODUÇÃO
 // ===============================
@@ -37,7 +44,8 @@ async function buscarStatus() {
             return;
         }
 
-        document.getElementById("plc-status").textContent = "CONECTADO";
+        marcarOnline();
+
         document.getElementById("caixas").textContent =
             dados.caixas_por_palete.toLocaleString("pt-BR");
         document.getElementById("paletes").textContent =
@@ -375,10 +383,69 @@ function atualizarHorario() {
     document.getElementById("last-update").textContent = agora.toLocaleTimeString("pt-BR");
 }
 
+// Chamada quando /producao/status responde com dados.conectado === true.
+// Antes disso não existia em lugar nenhum do arquivo: buscarStatus() só
+// setava o texto "CONECTADO", sem nunca colorir de volta o que
+// marcarOffline() deixava vermelho/cinza (o indicador do topo e o
+// painel SYSTEM MONITORING ficavam presos no último estado ruim).
+function marcarOnline() {
+    const plcStatusEl = document.getElementById("plc-status");
+    plcStatusEl.textContent = "CONECTADO";
+    plcStatusEl.style.color = "var(--green)";
+
+    const dot = document.getElementById("connection-dot");
+    dot.style.background = "var(--green)";
+    dot.style.boxShadow = "0 0 10px var(--green)";
+
+    const systemConnEl = document.getElementById("system-connection");
+    systemConnEl.textContent = "● CONNECTED";
+    systemConnEl.style.color = "var(--green)";
+}
+
+// Chamada quando /producao/status responde com dados.conectado === false,
+// ou quando a própria requisição falha (backend fora do ar, sem rede etc).
 function marcarOffline() {
-    document.getElementById("plc-status").textContent = "SEM CONEXÃO";
+    const plcStatusEl = document.getElementById("plc-status");
+    plcStatusEl.textContent = "OFFLINE";
+    plcStatusEl.style.color = "var(--red)";
+
+    const dot = document.getElementById("connection-dot");
+    dot.style.background = "var(--red)";
+    dot.style.boxShadow = "0 0 10px var(--red)";
+
+    const systemConnEl = document.getElementById("system-connection");
+    systemConnEl.textContent = "● DESCONECTADO";
+    systemConnEl.style.color = "var(--red)";
 
     const estadoEl = document.getElementById("estado");
     estadoEl.textContent = "SEM CONEXÃO";
     estadoEl.style.color = "var(--red)";
+
+    const motorDot = document.getElementById("motor-dot");
+    motorDot.style.background = "var(--muted)";
+    motorDot.style.boxShadow = "none";
+
+    // Sem CLP conectado não há "rodando" nem "parada" real: para o
+    // relogio local (tick()) de continuar incrementando um tempo com
+    // base num estado que já não é mais confiável.
+    estadoAtual = null;
 }
+
+
+// ===============================
+// INICIALIZAÇÃO
+// (antes deste bloco, nada no arquivo era chamado de fato: buscarStatus,
+// buscarHistoricoParadas, buscarHistoricoAlarmes e tick só existiam como
+// definições de função. Por isso a tela ficava travada nos valores padrão
+// escritos direto no index.html, mesmo sem o CLP conectado.)
+// ===============================
+
+buscarStatus();
+buscarHistoricoParadas();
+buscarHistoricoAlarmes();
+tick();
+
+setInterval(buscarStatus, INTERVALO_FETCH_MS);
+setInterval(buscarHistoricoParadas, INTERVALO_FETCH_MS);
+setInterval(buscarHistoricoAlarmes, INTERVALO_FETCH_MS);
+setInterval(tick, INTERVALO_TICK_MS);
