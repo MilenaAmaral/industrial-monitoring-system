@@ -21,12 +21,12 @@ import time
 
 from dotenv import load_dotenv
 
-from plc_connection import conectar_plc
-from mysql_connection import conectar_mysql
-from plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel
-from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
-from paradas import abrir_evento_parada, fechar_evento_parada, retomar_evento_aberto
-from alarmes import abrir_evento_alarme, fechar_evento_alarme, retomar_eventos_abertos
+from backend.plc_connection import conectar_plc
+from backend.mysql_connection import conectar_mysql
+from backend.plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel
+from backend.salvar_leitura_mysql import montar_valores, salvar_leitura_producao
+from backend.paradas import abrir_evento_parada, fechar_evento_parada, retomar_evento_aberto
+from backend.alarmes import abrir_evento_alarme, fechar_evento_alarme, retomar_eventos_abertos
 
 load_dotenv()
 

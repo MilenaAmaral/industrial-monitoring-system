@@ -150,11 +150,11 @@
                     </button>
 
                     <div class="connection">
-                        <span class="connection-dot"></span>
+                        <span class="connection-dot" id="connection-dot" style="background: var(--muted); box-shadow: none;"></span>
 
                         <div>
                             <small>PLC STATUS</small>
-                            <strong id="plc-status">ONLINE</strong>
+                            <strong id="plc-status" style="color: var(--muted);">VERIFICANDO...</strong>
                         </div>
                     </div>
 
@@ -246,7 +246,7 @@
 
                     <div>
                         <small>CURRENT STATE</small>
-                        <h2 id="estado">PRODUZINDO</h2>
+                        <h2 id="estado" style="color: var(--muted);">VERIFICANDO...</h2>
                     </div>
 
                 </div>
@@ -385,7 +385,7 @@
 
                 <div>
                     <small>CONNECTION</small>
-                    <strong class="connected">● CONNECTED</strong>
+                    <strong id="system-connection" class="connected" style="color: var(--muted);">● VERIFICANDO...</strong>
                 </div>
 
                 <div>
