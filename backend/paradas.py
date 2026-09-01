@@ -13,7 +13,7 @@ pouco para reagir a transicao.
 
 from datetime import datetime
 
-from mysql_connection import conectar_mysql
+from backend.mysql_connection import conectar_mysql
 
 
 # Id do evento de parada em andamento, em memoria neste processo.

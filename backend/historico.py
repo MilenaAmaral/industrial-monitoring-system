@@ -6,7 +6,7 @@ persistidos na tabela leituras_producao pelo automacao.py.
 
 from datetime import datetime, timedelta
 
-from mysql_connection import conectar_mysql
+from backend.mysql_connection import conectar_mysql
 
 
 def _parse_intervalo(data_inicio, data_fim):

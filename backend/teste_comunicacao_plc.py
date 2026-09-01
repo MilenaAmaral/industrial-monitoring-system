@@ -3,8 +3,8 @@ TESTE DE COMUNICACAO - SIEMENS S7-1500
 ========================================
 """
 
-from plc_connection import conectar_plc
-from plc_reader import VARIAVEIS, VARIAVEIS_PRODUCAO, ler_variavel, formatar_endereco
+from backend.plc_connection import conectar_plc
+from backend.plc_reader import VARIAVEIS, VARIAVEIS_PRODUCAO, ler_variavel, formatar_endereco
 
 
 def executar_leituras(plc, variaveis):

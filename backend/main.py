@@ -2,14 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from plc_connection import conectar_plc
-from plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel
-from mysql_connection import conectar_mysql
-from salvar_leitura_mysql import montar_valores, salvar_leitura_producao
-from automacao import iniciar_leitura_automatica
-from paradas import evento_em_andamento, listar_paradas, resumo_paradas
-from alarmes import eventos_em_andamento, listar_eventos_alarme, resumo_alarmes
-from historico import listar_leituras, resumo_periodo, producao_diaria
+from backend.plc_connection import conectar_plc
+from backend.plc_reader import VARIAVEIS_PRODUCAO, VARIAVEIS_ALARMES, ler_variavel
+from backend.mysql_connection import conectar_mysql
+from backend.salvar_leitura_mysql import montar_valores, salvar_leitura_producao
+from backend.automacao import iniciar_leitura_automatica
+from backend.paradas import evento_em_andamento, listar_paradas, resumo_paradas
+from backend.alarmes import eventos_em_andamento, listar_eventos_alarme, resumo_alarmes
+from backend.historico import listar_leituras, resumo_periodo, producao_diaria
 
 
 app = FastAPI(

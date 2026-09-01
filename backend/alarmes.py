@@ -14,7 +14,7 @@ tempo dentro do proprio CLP (sao so bits ligado/desligado).
 
 from datetime import datetime
 
-from mysql_connection import conectar_mysql
+from backend.mysql_connection import conectar_mysql
 
 
 # nome_do_alarme -> id do evento aberto neste processo
