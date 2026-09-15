@@ -1,9 +1,15 @@
 import os
+from pathlib import Path
 
 import snap7
 from dotenv import load_dotenv
 
-load_dotenv()
+# Caminho explicito do .env, baseado na localizacao deste arquivo (nao
+# no diretorio de onde o comando foi executado). A deteccao automatica
+# do python-dotenv (load_dotenv() sem argumento) pode nao achar o .env
+# dependendo de como o backend e iniciado (ex: uvicorn --reload usa
+# multiprocessing, o que muda o "frame" que o dotenv usa pra procurar).
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 def _variavel_obrigatoria(nome):
