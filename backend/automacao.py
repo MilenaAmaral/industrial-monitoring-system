@@ -18,6 +18,7 @@ Iniciado automaticamente quando a API sobe (ver main.py).
 import os
 import threading
 import time
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -28,7 +29,10 @@ from backend.salvar_leitura_mysql import montar_valores, salvar_leitura_producao
 from backend.paradas import abrir_evento_parada, fechar_evento_parada, retomar_evento_aberto
 from backend.alarmes import abrir_evento_alarme, fechar_evento_alarme, retomar_eventos_abertos
 
-load_dotenv()
+# Caminho explicito do .env, baseado na localizacao deste arquivo (ver
+# nota em plc_connection.py sobre por que nao usar load_dotenv() sem
+# argumento).
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 MONITORAMENTO_INTERVALO_SEGUNDOS = int(os.getenv("MONITORAMENTO_INTERVALO_SEGUNDOS", "2"))
 LEITURA_INTERVALO_SEGUNDOS = int(os.getenv("LEITURA_INTERVALO_SEGUNDOS", "10"))

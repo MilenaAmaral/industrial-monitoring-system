@@ -1,10 +1,14 @@
 import os
+from pathlib import Path
 
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 
-load_dotenv()
+# Caminho explicito do .env, baseado na localizacao deste arquivo (ver
+# nota em plc_connection.py sobre por que nao usar load_dotenv() sem
+# argumento).
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
